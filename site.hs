@@ -80,8 +80,8 @@ postCtx =
 myFeedConfiguration :: FeedConfiguration
 myFeedConfiguration =
   FeedConfiguration
-    { feedTitle = "SpaceHealthy cooking: latest recipes",
-      feedDescription = "berberman's space",
+    { feedTitle = "berberman's space",
+      feedDescription = "qwq",
       feedAuthorName = "berberman",
       feedAuthorEmail = "berberman@yandex.com",
       feedRoot = "https://www.berberman.space"

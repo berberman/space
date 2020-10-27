@@ -47,7 +47,7 @@ to let Cabal call GHC enabled dynamic linking.
 
 ## Install the language server
 
-Personally, I would recommend [haskell-language-server](https://github.com/haskell/haskell-language-server), which is active in developing and provide unprecedented coding experience. Because we choose using dynamic GHC, we have to compile HLS by ourselves with dynamic option. Clone the source code:
+Personally, I would recommend [haskell-language-server](https://github.com/haskell/haskell-language-server), which is active in developing and provides unprecedented coding experience. Because we choose using dynamic GHC, we have to compile HLS by ourselves with dynamic option. Clone the source code:
 
 ```
 $ git clone https://github.com/haskell/haskell-language-server --recurse-submodules

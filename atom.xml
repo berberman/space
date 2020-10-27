@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
     <title>SpaceHealthy cooking: latest recipes</title>
-    <link href="https://berberman.space/atom.xml" rel="self" />
-    <link href="https://berberman.space" />
-    <id>https://berberman.space/atom.xml</id>
+    <link href="https://www.berberman.space/atom.xml" rel="self" />
+    <link href="https://www.berberman.space" />
+    <id>https://www.berberman.space/atom.xml</id>
     <author>
         <name>berberman</name>
         <email>berberman@yandex.com</email>
@@ -11,8 +11,8 @@
     <updated>2020-10-27T00:00:00Z</updated>
     <entry>
     <title>Setting up a Haskell development environment on Arch Linux</title>
-    <link href="https://berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html" />
-    <id>https://berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html</id>
+    <link href="https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html" />
+    <id>https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html</id>
     <published>2020-10-27T00:00:00Z</published>
     <updated>2020-10-27T00:00:00Z</updated>
     <summary type="html"><![CDATA[<article>

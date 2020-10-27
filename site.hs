@@ -84,7 +84,7 @@ myFeedConfiguration =
       feedDescription = "berberman's space",
       feedAuthorName = "berberman",
       feedAuthorEmail = "berberman@yandex.com",
-      feedRoot = "https://berberman.space"
+      feedRoot = "https://www.berberman.space"
     }
 
 pRoute :: Routes

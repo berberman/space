@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import qualified Data.Text as T
 import Hakyll
 
 main :: IO ()
 main = hakyll $ do
-
-  match (fromList ["favicon.ico","CNAME","README.md"]) $ do
+  match (fromList ["favicon.ico", "CNAME", "README.md"]) $ do
     route idRoute
     compile copyFileCompiler
 
@@ -25,7 +25,7 @@ main = hakyll $ do
         >>= relativizeUrls
 
   match "posts/*" $ do
-    route $ setExtension "html"
+    route pRoute
     compile $
       pandocCompiler
         >>= loadAndApplyTemplate "templates/post.html" postCtx
@@ -65,10 +65,11 @@ main = hakyll $ do
   create ["atom.xml"] $ do
     route idRoute
     compile $ do
-        let feedCtx = postCtx `mappend` bodyField "description"
-        posts <- fmap (take 10) . recentFirst =<<
-            loadAllSnapshots "posts/*" "content"
-        renderAtom myFeedConfiguration feedCtx posts
+      let feedCtx = postCtx `mappend` bodyField "description"
+      posts <-
+        fmap (take 10) . recentFirst
+          =<< loadAllSnapshots "posts/*" "content"
+      renderAtom myFeedConfiguration feedCtx posts
 
 --------------------------------------------------------------------------------
 postCtx :: Context String
@@ -86,5 +87,10 @@ myFeedConfiguration =
       feedRoot = "https://berberman.space"
     }
 
--- fixRoute :: String -> String
--- fixRoute s = "posts/" <> (reverse.drop 3 . reverse $ drop 17 s)
+pRoute :: Routes
+pRoute = metadataRoute $ \m ->
+  case lookupString "title" m of
+    Just x -> constRoute $ f x <> ".html"
+    Nothing -> error "no"
+  where
+    f = T.unpack . T.replace " " "-" . T.toLower . T.pack

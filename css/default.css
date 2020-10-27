@@ -1,5 +1,13 @@
+@font-face {
+  font-family: 'CascadiaCode';
+  src: url('../font/CascadiaCode.woff2') format('woff2'),
+       url('../font/CascadiaCode.ttf') format('truetype'),
+       url('../font/CascadiaCode.otf') format('opentype');
+}
+
+
 html {
-  font-size: 62.5%;
+  font-size: 75%;
 }
 
 body {
@@ -9,6 +17,7 @@ body {
 
 header {
   border-bottom: 0.2rem solid #000;
+  font-family: cursive, serif;
 }
 
 nav {
@@ -20,7 +29,7 @@ nav a {
   font-weight: bold;
   color: black;
   text-decoration: none;
-  text-transform: uppercase;
+  text-transform: capitalize;
 }
 
 footer {
@@ -32,14 +41,12 @@ footer {
 }
 
 p {
-  line-height: 1.6;
-  font-size: 17px;
+  line-height: 1.4;
+  font-size: 19px;
 }
 
 section, h1 {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji',
-    'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-family: Georgia, "Times New Roman", Times, serif;
 }
 
 h1 {
@@ -52,8 +59,7 @@ h2 {
 
 code {
   background-color: #eee;
-  font-family: 'SF Mono', SFMono-Regular, Consolas,
-    'Liberation Mono', Menlo, Courier, monospace;
+  font-family: "CascadiaCode";
 }
 
 pre > code {
@@ -72,6 +78,7 @@ article .header {
   font-weight: bold;
   color: #000;
   text-decoration: none;
+  font-family: cursive, serif;
 }
 
 @media (max-width: 319px) {

@@ -70,7 +70,7 @@ Next step is choosing your favorite editor, and installing following the instruc
 
 ## Conclusion
 
-Indeed, we have encountered the first impediment in installing HLS. Using dynamic GHC with system  Haskell packages is double-edged, suggesting that we have to face various lurking issues.
+Indeed, we have encountered the first impediment in installing HLS. Using dynamic GHC with system Haskell packages is double-edged, suggesting that we have to face various lurking issues.
 
 Pros:
 
@@ -89,5 +89,5 @@ The last is kind of troublesome, because maintainers should patch the source of 
 * [doctest](https://github.com/archlinux/svntogit-community/blob/833e37fbe6de1f07e106d81e9e0ef9e08f0513ad/trunk/PKGBUILD#L20)
 * ...
 
-Overall, it seems that we'd better don't touch these dynamic things in Haskell developing... Anyway, I'm posting this to illustrate that working with `haskell-` packages is possible. It is worth mentioning that **all Haskell packages**, and even **a half of entire Arch Linux packages** are maintaining by [felixonmars](https://github.com/felixonmars) individually, who is dedicated to these unpaid contributions. As an Arch Linux user, I would like to express my high respects to his greatest professionalism and responsibility. Next time, I will introduce my Haskell packaging tool [arch-hs](https://github.com/berberman/arch-hs), which can be used by both Arch Linux Haskell packagers and Haskell developers.
+Overall, it seems that we'd better don't touch these dynamic things in Haskell developing... Anyway, I'm posting this to illustrate that working with `haskell-` packages is possible. It is worth mentioning that **all Haskell packages**, and even **three tenths of entire Arch Linux packages** are maintaining by [felixonmars](https://github.com/felixonmars) individually, who is dedicated to these unpaid contributions. As an Arch Linux user, I would like to express my high respects to his greatest professionalism and responsibility. Next time, I will introduce my Haskell packaging tool [arch-hs](https://github.com/berberman/arch-hs), which can be used by both Arch Linux Haskell packagers and Haskell developers.
 

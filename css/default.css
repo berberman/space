@@ -25,7 +25,7 @@ nav {
 }
 
 nav a {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: bold;
   color: black;
   text-decoration: none;
@@ -58,14 +58,22 @@ h2 {
 }
 
 code {
-  background-color: #eee;
   font-family: "CascadiaCode";
+  background-color: #f6f8fa;
+  font-size: 85%;
+}
+
+blockquote{
+  color: #6a737d;
+  padding: 0 1em;
+  margin: 0;
+  border-left: .25em solid #dfe2e5;
 }
 
 pre > code {
   display: block;
   overflow: auto;
-  padding: 3px 5px;
+  padding: 12px;
 }
 
 article .header {

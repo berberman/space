@@ -5,6 +5,8 @@
        url('../font/CascadiaCode.otf') format('opentype');
 }
 
+article a:link    {color:#735c0f;}
+article a:visited {color:#735c0f;}
 
 html {
   font-size: 75%;

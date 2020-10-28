@@ -1,6 +1,7 @@
 ---
 title: Setting up a Haskell development environment on Arch Linux
 author: berberman
+date: 2020-10-27 00:00:00
 ---
 
 ~~Once you accept the principles of Arch Linux -- being simplicity and modernity -- everything goes easier.~~ In this article, we will use up-to-date Haskell ecosystem by using system provided Haskell packages, getting rid of awkward stack which could eat huge amount of your disk space. We won't going to [nix](https://github.com/Gabriel439/haskell-nix) or [ghcup](https://gitlab.haskell.org/haskell/ghcup-hs), since they are both general Haskell toolchain solutions, not specific to Arch Linux.

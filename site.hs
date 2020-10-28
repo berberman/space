@@ -5,7 +5,7 @@ import Hakyll
 
 main :: IO ()
 main = hakyll $ do
-  match (fromList ["favicon.ico", "CNAME", "README.md"]) $ do
+  match (fromList ["favicon.ico", "CNAME", "LICENSE", "README.md"]) $ do
     route idRoute
     compile copyFileCompiler
 

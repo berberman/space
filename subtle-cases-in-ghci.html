@@ -1,21 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
-    <title>berberman's space</title>
-    <link href="https://www.berberman.space/atom.xml" rel="self" />
-    <link href="https://www.berberman.space" />
-    <id>https://www.berberman.space/atom.xml</id>
-    <author>
-        <name>berberman</name>
-        <email>berberman@yandex.com</email>
-    </author>
-    <updated>2021-04-11T23:58:00Z</updated>
-    <entry>
-    <title>Subtle cases in GHCi</title>
-    <link href="https://www.berberman.space/subtle-cases-in-ghci.html" />
-    <id>https://www.berberman.space/subtle-cases-in-ghci.html</id>
-    <published>2021-04-11T23:58:00Z</published>
-    <updated>2021-04-11T23:58:00Z</updated>
-    <summary type="html"><![CDATA[<article>
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Space - Subtle cases in GHCi</title>
+    <link rel="stylesheet" href="./css/default.css" />
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <a href="./">Space</a>
+        </div>
+        <nav>
+            <a href="./">Home</a>
+            <a href="./contact.html">Contact</a>
+            <a href="./archive.html">Archive</a>
+            <a href="./atom.xml">Feed</a>
+        </nav>
+    </header>
+
+    <main role="main">
+        <h1>Subtle cases in GHCi</h1>
+        <article>
     <section class="header">
         Posted on April 11, 2021
         
@@ -144,7 +154,7 @@
 <h2 id="ghci-中的语句执行">GHCi 中的语句执行</h2>
 <p>在 GHCi session 中可以：</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="kw">let</span> x <span class="ot">=</span> <span class="dv">1</span>          <span class="co">-- 绑定纯的变量</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> x&#39; <span class="ot">=</span> <span class="dv">1</span>             <span class="co">-- 绑定纯的变量，let 可以省略</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> x' <span class="ot">=</span> <span class="dv">1</span>             <span class="co">-- 绑定纯的变量，let 可以省略</span></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>λ<span class="op">&gt;</span> y <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="dv">2</span>        <span class="co">-- 绑定 IO 结果到变量</span></span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="dv">3</span> <span class="op">+</span> <span class="dv">3</span>              <span class="co">-- 求值表达式并打印</span></span>
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a><span class="dv">6</span></span>
@@ -197,13 +207,13 @@
 <span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>run_decls [<span class="dt">L</span> l (<span class="dt">ValD</span> _ bind<span class="op">@</span><span class="dt">VarBind</span>{})] <span class="ot">=</span></span>
 <span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>  run_stmt (mk_stmt (locA l) bind) <span class="co">-- 调用 run_stmt 执行</span></span>
 <span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>run_decls decls <span class="ot">=</span> <span class="kw">do</span> <span class="co">-- 如果不是 FunBind 或者 VarBind，还得按声明来处理</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a>  m_result <span class="ot">&lt;-</span> GhciMonad.runDecls&#39; decls</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a>  m_result <span class="ot">&lt;-</span> GhciMonad.runDecls' decls</span>
 <span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a>  forM m_result <span class="op">$</span> \result <span class="ot">-&gt;</span></span>
 <span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a>    afterRunStmt (<span class="fu">const</span> <span class="dt">True</span>) (<span class="dt">GHC.ExecComplete</span> (<span class="dt">Right</span> result) <span class="dv">0</span>)</span>
 <span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a></span>
 <span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a><span class="co">-- 把 Bind 变成 LetStmt</span></span>
 <span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a><span class="ot">mk_stmt ::</span> <span class="dt">SrcSpan</span> <span class="ot">-&gt;</span> <span class="dt">HsBind</span> <span class="dt">GhcPs</span> <span class="ot">-&gt;</span> <span class="dt">GhciLStmt</span> <span class="dt">GhcPs</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>mk_stmt loc bind <span class="ot">=</span> <span class="kw">let</span> la <span class="ot">=</span> <span class="op">...</span> <span class="kw">in</span> la (<span class="dt">LetStmt</span> noAnn (<span class="dt">HsValBinds</span> noAnn (<span class="dt">ValBinds</span> <span class="dt">NoAnnSortKey</span> (unitBag (la&#39; bind)) [])))</span></code></pre></div>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>mk_stmt loc bind <span class="ot">=</span> <span class="kw">let</span> la <span class="ot">=</span> <span class="op">...</span> <span class="kw">in</span> la (<span class="dt">LetStmt</span> noAnn (<span class="dt">HsValBinds</span> noAnn (<span class="dt">ValBinds</span> <span class="dt">NoAnnSortKey</span> (unitBag (la' bind)) [])))</span></code></pre></div>
 <p>可以看到“省略 let 的绑定”是在 GHCi 入口处实现的。那么 <code>run_stmt</code> 是啥？GHCi 最终调用的函数应该是 <a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/GHC.html#v:execStmt-39-"><code>execStmt'</code></a> ——这是 GHC 暴露 API 的一部分，所以有 Haddock 文档。这个函数干的最重要的一件事就是调用了 <a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/HscMain.html#v:hscParsedStmt"><code>hscParsedStmt</code></a>：而语句在这个函数中走过了完整的编译过程：<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/TcRnDriver.html#v:tcRnStmt"><code>tcRnStmt</code></a> 完成 rename &amp; typecheck、<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/Desugar.html#v:deSugarExpr"><code>deSugarExpr</code></a> 完成 desugar &amp; generate core、<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/HscMain.html#v:hscCompileCoreExpr"><code>hscCompileCoreExpr</code></a> 完成 codegen &amp; link。我们只关心类型检查部分。从注释我们可以清晰地知道 GHC 在类型检查时加 buff，实现创建交互式绑定以及 <code>it</code> 变量的策略：</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>                <span class="dt">Typechecking</span> <span class="dt">Stmts</span> <span class="kw">in</span> <span class="dt">GHCi</span></span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a></span>
@@ -299,80 +309,16 @@
 <li>……</li>
 </ul>
     </section>
-    <script src="https://utteranc.es/client.js" repo="berberman/space" issue-term="pathname" theme="github-light"
-        crossorigin="anonymous" async>
+    <script src="https://utteranc.es/client.js" repo="berberman/space" issue-term="pathname" theme="github-light" crossorigin="anonymous" async>
         </script>
-</article>]]></summary>
-</entry>
-<entry>
-    <title>Setting up a Haskell development environment on Arch Linux</title>
-    <link href="https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html" />
-    <id>https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html</id>
-    <published>2020-10-27T00:00:00Z</published>
-    <updated>2020-10-27T00:00:00Z</updated>
-    <summary type="html"><![CDATA[<article>
-    <section class="header">
-        Posted on October 27, 2020
-        
-        by berberman
-        
-    </section>
-    <section>
-        <p><del>Once you accept the principles of Arch Linux – being simplicity and modernity – everything goes easier.</del> In this article, we will use up-to-date Haskell ecosystem by using system provided Haskell packages, getting rid of awkward stack which could eat huge amount of your disk space. We won’t going to <a href="https://github.com/Gabriel439/haskell-nix">nix</a> or <a href="https://gitlab.haskell.org/haskell/ghcup-hs">ghcup</a>, since they are both general Haskell toolchain solutions, not specific to Arch Linux.</p>
-<h2 id="preface">Preface</h2>
-<p>If you get pandoc, shellcheck, or other Haskell programs installed on your system, you will find that a bunch of packages with <code>haskell-</code> prefix emerge frequently when rolling the system, which is pretty verbose and noisy. Thus, many of general users, i.e. not Haskell developers, always complain that “why every time I tries to roll my system, there are so many Haskell packages to be updated, and wait… What Is Haskell?” Remember that Arch Linux official repositories are not built for Haskell developers, <code>haskell-</code> packages distributed there are only for programs written in Haskell. To save disk space, Haskell executables do not bundle their dependencies, so libraries are stripped into independent packages, consistent with Haskell package management. Other languages’ distributions follow the similar strategy, whereas a vexing problem arise particularly in Haskell packaging. Haskell packages are packaged and linked dynamically, but GHC does not provide a stable <a href="https://en.wikipedia.org/wiki/Application_binary_interface">ABI</a>, since its specific hash method acting on circular dependences, which lie ubiquitously involving tests, will cause the <a href="https://en.wikipedia.org/wiki/Soname">soname</a> of shared libraries interdependent. Consequently, you may notice that the entire Haskell packages in <a href="https://www.archlinux.org/packages/">[community]</a> are not <a href="https://reproducible.archlinux.org/">reproducible</a>. If a Haskell library changes, all dependent packages are required to be rebuilt. For us, it is inevitable to rebuild and reinstall all tools which depend on those shared libraries after updating <code>haskell-</code> packages. Some users choose to avoid getting involved this sort of cheating, using static version Haskell programs as alternative. However, as a Haskell developer, we can make full use of these shared libraries.</p>
-<h2 id="configure-cabal">Configure Cabal</h2>
-<p>We will use <a href="https://cabal.readthedocs.io/en/3.2/">Cabal</a> without sandboxes as our build tool, and system level GHC as our compiler. Let’s install them via system package management tool:</p>
-<pre><code># pacman -S ghc cabal-install</code></pre>
-<p>Generate the configuration and update hackage index as normal:</p>
-<pre><code>$ cabal update</code></pre>
-<p>Cabal are able to find system Haskell packages installed by pacman. If you try to use Cabal directly to compiling your project now, you will get:</p>
-<blockquote>
-<p>Could not find module ‘Prelude’…</p>
-</blockquote>
-<p>indicating that many packages which would come with GHC are missing. This is because currently system Haskell packages provide only dynamic linked shared libraries, which can be used only when GHC is running in dynamic. So we have to configure <code>~/.cabal/config</code> as following:</p>
-<pre><code>library-vanilla: False
-shared: True
-executable-dynamic: True
-program-default-options
-  ghc-options: -dynamic</code></pre>
-<p>And if we want to install a Haskell program from cabal, we have to run:</p>
-<pre><code>cabal install --ghc-options=-dynamic [package to install]</code></pre>
-<p>to let Cabal call GHC enabled dynamic linking.</p>
-<h2 id="install-the-language-server">Install the language server</h2>
-<p>Personally, I would recommend <a href="https://github.com/haskell/haskell-language-server">haskell-language-server</a>, which is active in developing and provides unprecedented coding experience. Because we choose using dynamic GHC, we have to compile HLS by ourselves with dynamic option. Clone the source code:</p>
-<pre><code>$ git clone https://github.com/haskell/haskell-language-server --recurse-submodules
-$ cd haskell-language-server</code></pre>
-<p><strong>IMPORTANT:</strong> Configure the HLS project locally:</p>
-<pre><code>$ cabal configure --disable-library-vanilla --enable-shared --enable-executable-dynamic --ghc-options=-dynamic</code></pre>
-<p>Finally install it:</p>
-<pre><code>$ ./cabal-hls-install latest</code></pre>
-<p>Next step is choosing your favorite editor, and installing following the instruction in HLS. That’s it, happy coding!</p>
-<h2 id="conclusion">Conclusion</h2>
-<p>Indeed, we have encountered the first impediment in installing HLS. Using dynamic GHC with system Haskell packages is double-edged, suggesting that we have to face various lurking issues.</p>
-<p>Pros:</p>
-<ul>
-<li>it’s impossible to get stuck into dependency hell (we always use the latest Haskell packages)</li>
-<li>far less disk usage is required</li>
-</ul>
-<p>Cons:</p>
-<ul>
-<li>out-of-date packages are not available (so there will be slightly fewer libraries we can use)</li>
-<li>programs involving GHC should be given special treatment (make sure GHC is called with dynamic flag)</li>
-</ul>
-<p>The last is kind of troublesome, because maintainers should patch the source of those programs to let them call GHC properly. Here are some examples:</p>
-<ul>
-<li><a href="https://github.com/archlinux/svntogit-community/blob/59c345b179aee0d71aca0df5974056bb0ac15ae2/trunk/PKGBUILD#L31">Agda</a></li>
-<li><a href="https://github.com/archlinux/svntogit-community/blob/f06b6574b90addc54a67c664532b8175496e2495/trunk/dynamic-compilation.patch#L8">xmonad</a></li>
-<li><a href="https://github.com/archlinux/svntogit-community/blob/833e37fbe6de1f07e106d81e9e0ef9e08f0513ad/trunk/PKGBUILD#L20">doctest</a></li>
-<li>…</li>
-</ul>
-<p>Overall, it seems that we’d better don’t touch these dynamic things in Haskell developing… Anyway, I’m posting this to illustrate that working with <code>haskell-</code> packages is possible. It is worth mentioning that <strong>all Haskell packages</strong>, and even <strong>three tenths of entire Arch Linux packages</strong> are maintaining by <a href="https://github.com/felixonmars">felixonmars</a> individually, who is dedicated to these unpaid contributions. As an Arch Linux user, I would like to express my high respects to his greatest professionalism and responsibility. Next time, I will introduce my Haskell packaging tool <a href="https://github.com/berberman/arch-hs">arch-hs</a>, which can be used by both Arch Linux Haskell packagers and Haskell developers.</p>
-    </section>
-    <script src="https://utteranc.es/client.js" repo="berberman/space" issue-term="pathname" theme="github-light"
-        crossorigin="anonymous" async>
-        </script>
-</article>]]></summary>
-</entry>
+</article>
+    </main>
 
-</feed>
+    <footer>
+        © 2020 ❤
+        <a href="https://github.com/berberman">berberman</a>
+        WTFPL
+    </footer>
+</body>
+
+</html>

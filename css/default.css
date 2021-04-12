@@ -72,11 +72,11 @@ blockquote{
   border-left: .25em solid #dfe2e5;
 }
 
-pre > code {
+/*pre > code {
   display: block;
   overflow: auto;
   padding: 12px;
-}
+}*/
 
 article .header {
   font-size: 1.4rem;

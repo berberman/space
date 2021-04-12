@@ -1,3 +1,4 @@
 _*
 dist-newstyle
 .stack-work/
+cabal.project.local

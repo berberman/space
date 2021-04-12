@@ -4,7 +4,7 @@ import qualified Data.Text as T
 import Hakyll
 
 main :: IO ()
-main = hakyll $ do
+main = hakyllWith defaultConfiguration{ previewPort = 8080 } $ do
   match (fromList ["favicon.ico", "CNAME", "LICENSE", "README.md"]) $ do
     route idRoute
     compile copyFileCompiler

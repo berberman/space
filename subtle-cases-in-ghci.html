@@ -38,52 +38,52 @@
 <p>GHCi，即 GHC 的交互式（<em>interactive</em>）环境，可以用来求值 Haskell 表达式、加载编译好的 Haskell 程序、交互式推断表达式的类型等等。想必使用 GHCi 是每一位 Haskell 程序员的必备技能。然而，在 GHCi 中类型检查规则与默认情况下的 GHC 略有不同，这可能在某种程度上会带来一定困惑。在这篇文章中，我们将一起认识带来这个不同的语言扩展，并通过 GHC 以及 GHCi 的源码了解语句在 GHCi 中是怎样被执行、并打印的。</p>
 <h2 id="ghci-中默认启用的语言扩展">GHCi 中默认启用的语言扩展</h2>
 <p>一些在 GHC 中无法通过类型检查的表达式在 GHCi 环境中却可以通过，我们来看一个最简单的例子：</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="co">-- 在 ghci 中</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="fu">show</span> <span class="op">$</span> <span class="fu">reverse</span> []</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="st">&quot;[]&quot;</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="co">-- 在普通的 ghc 中</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>foo <span class="ot">=</span> <span class="fu">show</span> <span class="op">$</span> <span class="fu">reverse</span> []</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a><span class="co">-- • Ambiguous type variable ‘a0’ arising from a use of ‘show’</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a><span class="co">--   prevents the constraint ‘(Show a0)’ from being solved.</span></span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- 在 ghci 中</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="fu">show</span> <span class="op">$</span> <span class="fu">reverse</span> []</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;[]&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- 在普通的 ghc 中</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>foo <span class="ot">=</span> <span class="fu">show</span> <span class="op">$</span> <span class="fu">reverse</span> []</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- • Ambiguous type variable ‘a0’ arising from a use of ‘show’</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">--   prevents the constraint ‘(Show a0)’ from being solved.</span></span></code></pre></div>
 <p>在 GHCi 中，<code>show $ reverse []</code> 返回了一个字符串 <code>"[]"</code>，但在 GHC 中这个表达式不能过编译——正如错误信息所说，<code>Show a</code> 约束中的 <code>a</code> 是 <em>不确定</em> 的，编译器无法从 <code>[]</code> 中推断出来，于是就不知道该选择哪个实例的 <code>show</code> 函数了。听起来很有说服力，因为 <code>[a]</code> 中 <code>a</code> 的选择可能会改变 <code>[a]</code> 的显示方法：</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">data</span> <span class="dt">X</span> <span class="ot">=</span> <span class="dt">X</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a><span class="kw">instance</span> <span class="ot">{-# OVERLAPS #-}</span> <span class="dt">Show</span> [<span class="dt">X</span>] <span class="kw">where</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>  <span class="fu">show</span> [] <span class="ot">=</span> <span class="st">&quot;??&quot;</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>  <span class="fu">show</span> [x] <span class="ot">=</span> <span class="fu">show</span> x</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true"></a>  <span class="fu">show</span> (x<span class="op">:</span>xs) <span class="ot">=</span> <span class="fu">show</span> x <span class="op">++</span> <span class="st">&quot;, &quot;</span> <span class="op">++</span> <span class="fu">show</span> xs</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true"></a></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true"></a><span class="co">-- &gt;&gt;&gt; show ([] :: [X])</span></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true"></a><span class="co">-- &quot;??&quot;</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true"></a><span class="co">-- &gt;&gt;&gt; show [X, X, X]</span></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true"></a><span class="co">-- &quot;X, X, X&quot;</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true"></a></span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true"></a><span class="co">-- &gt;&gt;&gt; show ([] :: String)</span></span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true"></a><span class="co">-- &quot;\&quot;\&quot;&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">X</span> <span class="ot">=</span> <span class="dt">X</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">deriving</span> <span class="dt">Show</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="ot">{-# OVERLAPS #-}</span> <span class="dt">Show</span> [<span class="dt">X</span>] <span class="kw">where</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show</span> [] <span class="ot">=</span> <span class="st">&quot;??&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show</span> [x] <span class="ot">=</span> <span class="fu">show</span> x</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">show</span> (x<span class="op">:</span>xs) <span class="ot">=</span> <span class="fu">show</span> x <span class="op">++</span> <span class="st">&quot;, &quot;</span> <span class="op">++</span> <span class="fu">show</span> xs</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; show ([] :: [X])</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">-- &quot;??&quot;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; show [X, X, X]</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co">-- &quot;X, X, X&quot;</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="co">-- &gt;&gt;&gt; show ([] :: String)</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">-- &quot;\&quot;\&quot;&quot;</span></span></code></pre></div>
 <p>看来在 GHCi 中有特殊操作，帮助我们选择了一个 <code>a</code> 来显示空列表。让我们看看 GHCi 默认启用了哪些扩展：</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="op">:</span>showi language</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>with the following modifiers<span class="op">:</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>  <span class="op">-</span><span class="dt">XNoDatatypeContexts</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="op">-</span><span class="dt">XExtendedDefaultRules</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>  <span class="op">-</span><span class="dt">XNoMonomorphismRestriction</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>  <span class="op">-</span><span class="dt">XNondecreasingIndentation</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="op">:</span>showi language</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>with the following modifiers<span class="op">:</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span><span class="dt">XNoDatatypeContexts</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span><span class="dt">XExtendedDefaultRules</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span><span class="dt">XNoMonomorphismRestriction</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span><span class="dt">XNondecreasingIndentation</span></span></code></pre></div>
 <h3 id="datatypecontexts">DatatypeContexts</h3>
 <p><code>NoDatatypeContexts</code>…… 跑一下题，不得不说 <code>DatatypeContexts</code> 是个彻底失败的特性，来看个例子：</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="kw">newtype</span> <span class="dt">Eq</span> a <span class="ot">=&gt;</span> <span class="dt">B</span> a <span class="ot">=</span> <span class="dt">B</span> a</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">newtype</span> <span class="dt">Eq</span> a <span class="ot">=&gt;</span> <span class="dt">B</span> a <span class="ot">=</span> <span class="dt">B</span> a</span></code></pre></div>
 <p>我们想让用来构造 <code>B</code> 的 <code>a</code> 必须满足 <code>Eq</code> 约束，好，咱来写个函数体验一下：</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="ot">bEq ::</span> <span class="dt">B</span> a <span class="ot">-&gt;</span> <span class="dt">B</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>bEq (<span class="dt">B</span> x) (<span class="dt">B</span> y) <span class="ot">=</span> x <span class="op">==</span> y</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a><span class="co">-- • No instance for (Eq a) arising from a use of ‘B’</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a><span class="co">--   Possible fix:</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a><span class="co">--     add (Eq a) to the context of</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a><span class="co">--       the type signature for:</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a><span class="co">--         bEq :: forall a. B a -&gt; B a -&gt; Bool</span></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a><span class="co">-- • In the pattern: B x</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a><span class="co">--   In an equation for ‘bEq’: bEq (B x) (B y) = x == y</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ot">bEq ::</span> <span class="dt">B</span> a <span class="ot">-&gt;</span> <span class="dt">B</span> a <span class="ot">-&gt;</span> <span class="dt">Bool</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>bEq (<span class="dt">B</span> x) (<span class="dt">B</span> y) <span class="ot">=</span> x <span class="op">==</span> y</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- • No instance for (Eq a) arising from a use of ‘B’</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">--   Possible fix:</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co">--     add (Eq a) to the context of</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">--       the type signature for:</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">--         bEq :: forall a. B a -&gt; B a -&gt; Bool</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- • In the pattern: B x</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">--   In an equation for ‘bEq’: bEq (B x) (B y) = x == y</span></span></code></pre></div>
 <p>非常不幸，这是个伤星的故事——在模式匹配解构 <code>B</code> 时，它不光没有附带 <code>a</code> 满足 <code>Eq</code> 的证据，反倒向我们索要这个证据。在类型构造器前加的 <code>Eq a =&gt;</code> 只确保了在 <strong>构造</strong> <code>B</code> 时 <code>a</code> 必须满足 <code>Eq</code>。于是我们需要在所有用到 <code>B</code> 的函数的签名上都加上 <code>Eq a =&gt;</code>（如果不这样我们是没有办法解构 <code>B</code> 的）显然非常离谱。当然这个语言扩展已经将近废弃十年了，新的入门教程中几乎不会再出现它的身影，一些稍老的材料中也会提醒读者不要使用它。</p>
 <h3 id="extendeddefaultrules">ExtendedDefaultRules</h3>
 <p>能让开头 <code>show $ reverse []</code> 在 GHCi 工作的正是这个语言扩展。这个扩展意为“扩展默认的规则”，那我们就得先搞明白“默认的规则”是啥。首先我们要知道，Haskell 中整数字面值的类型是 <code>Num a =&gt; a</code>，浮点数字面值的类型是 <code>Fractional a =&gt; a</code>。那么问题来了：<code>233 == 233</code> 中，<code>233</code> 的类型是啥？<code>(==) :: Eq a =&gt; a -&gt; a -&gt; Bool</code>，这和前面例子中的 <code>Show</code> 很相似——光有 <code>Num a</code> 约束我们是无法进行比较的，除非 <code>Num a =&gt; a</code> 被实例化成某个 <em>具体</em> 的类型。这里则有 <code>233 :: Integer</code>。为什么呢？在 Haskell 2010 Report 中规定：</p>
@@ -119,122 +119,122 @@
 <p>这是个比较常见的坑，而且把每种情况解释一遍会很占篇幅，因此在这儿就说个大概。</p>
 </blockquote>
 <p>上节我们提到过，<code>print 233</code> 中受到 <em>默认规则</em> 的影响 <code>233</code> 的类型是 <code>Integer</code>。那么在一个整数字面值的绑定中呢？</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>qwq <span class="ot">=</span> <span class="dv">233</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="co">-- Top-level binding with no type signature: qwq :: Integer</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>qwq <span class="ot">=</span> <span class="dv">233</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Top-level binding with no type signature: qwq :: Integer</span></span></code></pre></div>
 <p>GHC 告诉我们 <code>qwq</code> 的类型是 <code>Integer</code>。可这里并没有涉及到使用约束，为什么字面值还是被实例化成了一个 <em>具体</em> 的类型呢？这就是 <code>MonomorphismRestriction</code> 的作用，没有类型签名的绑定会可能被应用 <em>默认规则</em>。这会让我们创建的绑定没有那么地“多态”。让我们一起看几个来自 Wiki 的例子：</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>f1 x <span class="ot">=</span> <span class="fu">show</span> x</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a></span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true"></a>f2 <span class="ot">=</span> \x <span class="ot">-&gt;</span> <span class="fu">show</span> x</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true"></a></span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true"></a><span class="ot">f3 ::</span> (<span class="dt">Show</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true"></a>f3 <span class="ot">=</span> \x <span class="ot">-&gt;</span> <span class="fu">show</span> x</span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true"></a></span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true"></a>f4 <span class="ot">=</span> <span class="fu">show</span></span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true"></a></span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true"></a><span class="ot">f5 ::</span> (<span class="dt">Show</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true"></a>f5 <span class="ot">=</span> <span class="fu">show</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>f1 x <span class="ot">=</span> <span class="fu">show</span> x</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>f2 <span class="ot">=</span> \x <span class="ot">-&gt;</span> <span class="fu">show</span> x</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ot">f3 ::</span> (<span class="dt">Show</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>f3 <span class="ot">=</span> \x <span class="ot">-&gt;</span> <span class="fu">show</span> x</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>f4 <span class="ot">=</span> <span class="fu">show</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="ot">f5 ::</span> (<span class="dt">Show</span> a) <span class="ot">=&gt;</span> a <span class="ot">-&gt;</span> <span class="dt">String</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>f5 <span class="ot">=</span> <span class="fu">show</span></span></code></pre></div>
 <p>默认不动任何扩展的情况下，<code>f1</code>、<code>f3</code> 以及 <code>f5</code> 都是我们想要的，它们具有类型 <code>Show a =&gt; a -&gt; String</code>；而 <code>f2</code> 和 <code>f4</code> 无法通过类型检查，<code>Show a</code> 中的 <code>a</code> 是 <em>不确定</em> 的。更有意思的是，这时候要是启用 <code>ExtendedDefaultRules</code>，<code>f2</code> 和 <code>f4</code> 也是良型的了，但它们的类型是 <code>() -&gt; String</code>。原因很简单，上节中我们提到过，<code>()</code> 会被插入到 <em>默认规则</em> 的头部，所以 GHC 选择了第一个能解析约束的 <code>()</code> 来实例化 <code>a</code>。当然，这有些反直觉——eta-reduce 一下居然改变了语义。根据 Haskell 2010 Report，这种限制是为了解决两个问题：无法通过标注类型签名解决的不确定性，以及不必要的重复求值。在 GHCi 中，我们通常不希望这种单态化发生：</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="op">:</span>set <span class="op">-</span><span class="dt">XMonomorphismRestriction</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> plus <span class="ot">=</span> (<span class="op">+</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a>λ<span class="op">&gt;</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a></span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a><span class="op">&lt;</span>interactive<span class="op">&gt;:</span><span class="dv">28</span><span class="op">:</span><span class="dv">6</span><span class="op">-</span><span class="dv">10</span><span class="op">:</span> <span class="fu">error</span><span class="op">:</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a>    • <span class="dt">No</span> <span class="kw">instance</span> for (<span class="dt">Fractional</span> <span class="dt">Integer</span>)</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a>        arising from the literal ‘<span class="fl">233.3</span>’</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a>    • <span class="dt">In</span> the first argument <span class="kw">of</span> ‘plus’, namely ‘<span class="fl">233.3</span>’</span>
-<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a>      <span class="dt">In</span> the expression<span class="op">:</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span>
-<span id="cb8-10"><a href="#cb8-10" aria-hidden="true"></a>      <span class="dt">In</span> an equation for ‘it’<span class="op">:</span> it <span class="ot">=</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="op">:</span>set <span class="op">-</span><span class="dt">XMonomorphismRestriction</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> plus <span class="ot">=</span> (<span class="op">+</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>interactive<span class="op">&gt;:</span><span class="dv">28</span><span class="op">:</span><span class="dv">6</span><span class="op">-</span><span class="dv">10</span><span class="op">:</span> <span class="fu">error</span><span class="op">:</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    • <span class="dt">No</span> <span class="kw">instance</span> for (<span class="dt">Fractional</span> <span class="dt">Integer</span>)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        arising from the literal ‘<span class="fl">233.3</span>’</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    • <span class="dt">In</span> the first argument <span class="kw">of</span> ‘plus’, namely ‘<span class="fl">233.3</span>’</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>      <span class="dt">In</span> the expression<span class="op">:</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>      <span class="dt">In</span> an equation for ‘it’<span class="op">:</span> it <span class="ot">=</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span></code></pre></div>
 <p>显然，这里 <code>plus</code> 的类型是 <code>Integer -&gt; Integer -&gt; Integer</code>。但在文件中用 GHC 编译是不会有问题的：</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a>plus <span class="ot">=</span> (<span class="op">+</span>)</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a>qwq <span class="ot">=</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>plus <span class="ot">=</span> (<span class="op">+</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>qwq <span class="ot">=</span> plus <span class="fl">233.3</span> <span class="dv">3</span></span></code></pre></div>
 <p>因为 GHC 会在推断出 <code>plus</code> 的类型前先看一看它被调用的地方，这时就有 <code>plus :: Double -&gt; Double -&gt; Double</code>；但在 GHCi 中语句是一步一步执行的，声明完 <code>plus</code> 直接就定下来了。</p>
 <h3 id="nondecreasingindentation">NondecreasingIndentation</h3>
 <p>咱也不知道这是干啥的，查了下好像在某些情况下可以让缩进往前越一级（？）不懂在 GHCi 里有啥用（x</p>
 <h2 id="ghci-中的语句执行">GHCi 中的语句执行</h2>
 <p>在 GHCi session 中可以：</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="kw">let</span> x <span class="ot">=</span> <span class="dv">1</span>          <span class="co">-- 绑定纯的变量</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> x' <span class="ot">=</span> <span class="dv">1</span>             <span class="co">-- 绑定纯的变量，let 可以省略</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true"></a>λ<span class="op">&gt;</span> y <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="dv">2</span>        <span class="co">-- 绑定 IO 结果到变量</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="dv">3</span> <span class="op">+</span> <span class="dv">3</span>              <span class="co">-- 求值表达式并打印</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true"></a><span class="dv">6</span></span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="fu">print</span> <span class="dv">4</span>            <span class="co">-- 执行 IO 操作</span></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true"></a><span class="dv">4</span></span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true"></a>λ<span class="op">&gt;</span> it                 <span class="co">-- 获得上次的求值结果</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true"></a>()</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="kw">let</span> x <span class="ot">=</span> <span class="dv">1</span>          <span class="co">-- 绑定纯的变量</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> x' <span class="ot">=</span> <span class="dv">1</span>             <span class="co">-- 绑定纯的变量，let 可以省略</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> y <span class="ot">&lt;-</span> <span class="fu">pure</span> <span class="dv">2</span>        <span class="co">-- 绑定 IO 结果到变量</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="dv">3</span> <span class="op">+</span> <span class="dv">3</span>              <span class="co">-- 求值表达式并打印</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="dv">6</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="fu">print</span> <span class="dv">4</span>            <span class="co">-- 执行 IO 操作</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="dv">4</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> it                 <span class="co">-- 获得上次的求值结果</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>()</span></code></pre></div>
 <p>是不是感觉有点像在一个 <code>IO ()</code> do notation 中，但可以省略 let、还多了个 <code>it</code>。这个 <code>it</code> 比较有意思，咱后面细说。咱可以直接看 GHCi 中的某个入口函数，它直接接收输入的字符串：</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="co">-- GHCi/UI.hs</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true"></a></span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true"></a><span class="ot">runStmt ::</span> <span class="dt">GhciMonad</span> m <span class="ot">=&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">SingleStep</span> <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">GHC.ExecResult</span>)</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true"></a>runStmt input step <span class="ot">=</span> <span class="kw">do</span></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true"></a>  pflags <span class="ot">&lt;-</span> initParserOpts <span class="op">&lt;$&gt;</span> GHC.getInteractiveDynFlags</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true"></a>  st <span class="ot">&lt;-</span> getGHCiState</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true"></a>  <span class="kw">let</span> source <span class="ot">=</span> progname st</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true"></a>  <span class="kw">let</span> line <span class="ot">=</span> line_number st</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true"></a></span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true"></a>  <span class="co">-- 如果输入是一个 statement</span></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true"></a>  <span class="kw">if</span> <span class="op">|</span> GHC.isStmt pflags input <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true"></a>         hsc_env <span class="ot">&lt;-</span> GHC.getSession</span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true"></a>         <span class="co">-- 尝试 parse 它</span></span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true"></a>         mb_stmt <span class="ot">&lt;-</span> liftIO (runInteractiveHsc hsc_env (hscParseStmtWithLocation source line input))</span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true"></a>         <span class="kw">case</span> mb_stmt <span class="kw">of</span></span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true"></a>           <span class="dt">Nothing</span> <span class="ot">-&gt;</span></span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true"></a>             <span class="co">-- parse 失败什么也不做</span></span>
-<span id="cb11-18"><a href="#cb11-18" aria-hidden="true"></a>             <span class="fu">return</span> (<span class="dt">Just</span> exec_complete)</span>
-<span id="cb11-19"><a href="#cb11-19" aria-hidden="true"></a>           <span class="dt">Just</span> stmt <span class="ot">-&gt;</span></span>
-<span id="cb11-20"><a href="#cb11-20" aria-hidden="true"></a>             <span class="co">-- 调用 run_stmt 执行</span></span>
-<span id="cb11-21"><a href="#cb11-21" aria-hidden="true"></a>             run_stmt stmt</span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true"></a>     <span class="co">-- 如果输入是一个 import</span></span>
-<span id="cb11-23"><a href="#cb11-23" aria-hidden="true"></a>     <span class="op">|</span> GHC.isImport pflags input <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb11-24"><a href="#cb11-24" aria-hidden="true"></a>         <span class="co">-- 添加 import</span></span>
-<span id="cb11-25"><a href="#cb11-25" aria-hidden="true"></a>         addImportToContext input</span>
-<span id="cb11-26"><a href="#cb11-26" aria-hidden="true"></a>         <span class="fu">return</span> (<span class="dt">Just</span> exec_complete)</span>
-<span id="cb11-27"><a href="#cb11-27" aria-hidden="true"></a></span>
-<span id="cb11-28"><a href="#cb11-28" aria-hidden="true"></a>     <span class="co">-- 其他情况我们把输入当作 declaration</span></span>
-<span id="cb11-29"><a href="#cb11-29" aria-hidden="true"></a>     <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
-<span id="cb11-30"><a href="#cb11-30" aria-hidden="true"></a>         hsc_env <span class="ot">&lt;-</span> GHC.getSession</span>
-<span id="cb11-31"><a href="#cb11-31" aria-hidden="true"></a>         <span class="kw">let</span> <span class="op">!</span>ic <span class="ot">=</span> hsc_IC hsc_env</span>
-<span id="cb11-32"><a href="#cb11-32" aria-hidden="true"></a>         <span class="co">-- 尝试 parse 成 declaration</span></span>
-<span id="cb11-33"><a href="#cb11-33" aria-hidden="true"></a>         decls <span class="ot">&lt;-</span> liftIO (hscParseDeclsWithLocation hsc_env source line input)</span>
-<span id="cb11-34"><a href="#cb11-34" aria-hidden="true"></a>         <span class="co">-- 看下个代码块</span></span>
-<span id="cb11-35"><a href="#cb11-35" aria-hidden="true"></a>         run_decls decls</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- GHCi/UI.hs</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="ot">runStmt ::</span> <span class="dt">GhciMonad</span> m <span class="ot">=&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> <span class="dt">SingleStep</span> <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">GHC.ExecResult</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>runStmt input step <span class="ot">=</span> <span class="kw">do</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  pflags <span class="ot">&lt;-</span> initParserOpts <span class="op">&lt;$&gt;</span> GHC.getInteractiveDynFlags</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  st <span class="ot">&lt;-</span> getGHCiState</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> source <span class="ot">=</span> progname st</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> line <span class="ot">=</span> line_number st</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- 如果输入是一个 statement</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">if</span> <span class="op">|</span> GHC.isStmt pflags input <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>         hsc_env <span class="ot">&lt;-</span> GHC.getSession</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>         <span class="co">-- 尝试 parse 它</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>         mb_stmt <span class="ot">&lt;-</span> liftIO (runInteractiveHsc hsc_env (hscParseStmtWithLocation source line input))</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>         <span class="kw">case</span> mb_stmt <span class="kw">of</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Nothing</span> <span class="ot">-&gt;</span></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>             <span class="co">-- parse 失败什么也不做</span></span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>             <span class="fu">return</span> (<span class="dt">Just</span> exec_complete)</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>           <span class="dt">Just</span> stmt <span class="ot">-&gt;</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>             <span class="co">-- 调用 run_stmt 执行</span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>             run_stmt stmt</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>     <span class="co">-- 如果输入是一个 import</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>     <span class="op">|</span> GHC.isImport pflags input <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>         <span class="co">-- 添加 import</span></span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>         addImportToContext input</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>         <span class="fu">return</span> (<span class="dt">Just</span> exec_complete)</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>     <span class="co">-- 其他情况我们把输入当作 declaration</span></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>     <span class="op">|</span> <span class="fu">otherwise</span> <span class="ot">-&gt;</span> <span class="kw">do</span></span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>         hsc_env <span class="ot">&lt;-</span> GHC.getSession</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>         <span class="kw">let</span> <span class="op">!</span>ic <span class="ot">=</span> hsc_IC hsc_env</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>         <span class="co">-- 尝试 parse 成 declaration</span></span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>         decls <span class="ot">&lt;-</span> liftIO (hscParseDeclsWithLocation hsc_env source line input)</span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>         <span class="co">-- 看下个代码块</span></span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>         run_decls decls</span></code></pre></div>
 <p><code>x = y</code> 是一个声明（<em>declaration</em>），但 <code>let x = y</code> 是一个语句（<em>statement</em>)。GHCi 的处理非常直接，把所有这种声明 parse 完之后将 AST 改写成 let 语句并执行：</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="co">-- GHCi/UI.hs</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a><span class="ot">run_decls ::</span> <span class="dt">GhciMonad</span> m <span class="ot">=&gt;</span> [<span class="dt">LHsDecl</span> <span class="dt">GhcPs</span>] <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">GHC.ExecResult</span>)</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>run_decls [<span class="dt">L</span> l (<span class="dt">ValD</span> _ bind<span class="op">@</span><span class="dt">FunBind</span>{})] <span class="ot">=</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>  run_stmt (mk_stmt (locA l) bind) <span class="co">-- 调用 run_stmt 执行</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>run_decls [<span class="dt">L</span> l (<span class="dt">ValD</span> _ bind<span class="op">@</span><span class="dt">VarBind</span>{})] <span class="ot">=</span></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>  run_stmt (mk_stmt (locA l) bind) <span class="co">-- 调用 run_stmt 执行</span></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>run_decls decls <span class="ot">=</span> <span class="kw">do</span> <span class="co">-- 如果不是 FunBind 或者 VarBind，还得按声明来处理</span></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true"></a>  m_result <span class="ot">&lt;-</span> GhciMonad.runDecls' decls</span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true"></a>  forM m_result <span class="op">$</span> \result <span class="ot">-&gt;</span></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true"></a>    afterRunStmt (<span class="fu">const</span> <span class="dt">True</span>) (<span class="dt">GHC.ExecComplete</span> (<span class="dt">Right</span> result) <span class="dv">0</span>)</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true"></a></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true"></a><span class="co">-- 把 Bind 变成 LetStmt</span></span>
-<span id="cb12-14"><a href="#cb12-14" aria-hidden="true"></a><span class="ot">mk_stmt ::</span> <span class="dt">SrcSpan</span> <span class="ot">-&gt;</span> <span class="dt">HsBind</span> <span class="dt">GhcPs</span> <span class="ot">-&gt;</span> <span class="dt">GhciLStmt</span> <span class="dt">GhcPs</span></span>
-<span id="cb12-15"><a href="#cb12-15" aria-hidden="true"></a>mk_stmt loc bind <span class="ot">=</span> <span class="kw">let</span> la <span class="ot">=</span> <span class="op">...</span> <span class="kw">in</span> la (<span class="dt">LetStmt</span> noAnn (<span class="dt">HsValBinds</span> noAnn (<span class="dt">ValBinds</span> <span class="dt">NoAnnSortKey</span> (unitBag (la' bind)) [])))</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- GHCi/UI.hs</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="ot">run_decls ::</span> <span class="dt">GhciMonad</span> m <span class="ot">=&gt;</span> [<span class="dt">LHsDecl</span> <span class="dt">GhcPs</span>] <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">GHC.ExecResult</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>run_decls [<span class="dt">L</span> l (<span class="dt">ValD</span> _ bind<span class="op">@</span><span class="dt">FunBind</span>{})] <span class="ot">=</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  run_stmt (mk_stmt (locA l) bind) <span class="co">-- 调用 run_stmt 执行</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>run_decls [<span class="dt">L</span> l (<span class="dt">ValD</span> _ bind<span class="op">@</span><span class="dt">VarBind</span>{})] <span class="ot">=</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  run_stmt (mk_stmt (locA l) bind) <span class="co">-- 调用 run_stmt 执行</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>run_decls decls <span class="ot">=</span> <span class="kw">do</span> <span class="co">-- 如果不是 FunBind 或者 VarBind，还得按声明来处理</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  m_result <span class="ot">&lt;-</span> GhciMonad.runDecls' decls</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  forM m_result <span class="op">$</span> \result <span class="ot">-&gt;</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    afterRunStmt (<span class="fu">const</span> <span class="dt">True</span>) (<span class="dt">GHC.ExecComplete</span> (<span class="dt">Right</span> result) <span class="dv">0</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="co">-- 把 Bind 变成 LetStmt</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="ot">mk_stmt ::</span> <span class="dt">SrcSpan</span> <span class="ot">-&gt;</span> <span class="dt">HsBind</span> <span class="dt">GhcPs</span> <span class="ot">-&gt;</span> <span class="dt">GhciLStmt</span> <span class="dt">GhcPs</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>mk_stmt loc bind <span class="ot">=</span> <span class="kw">let</span> la <span class="ot">=</span> <span class="op">...</span> <span class="kw">in</span> la (<span class="dt">LetStmt</span> noAnn (<span class="dt">HsValBinds</span> noAnn (<span class="dt">ValBinds</span> <span class="dt">NoAnnSortKey</span> (unitBag (la' bind)) [])))</span></code></pre></div>
 <p>可以看到“省略 let 的绑定”是在 GHCi 入口处实现的。那么 <code>run_stmt</code> 是啥？GHCi 最终调用的函数应该是 <a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/GHC.html#v:execStmt-39-"><code>execStmt'</code></a> ——这是 GHC 暴露 API 的一部分，所以有 Haddock 文档。这个函数干的最重要的一件事就是调用了 <a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/HscMain.html#v:hscParsedStmt"><code>hscParsedStmt</code></a>：而语句在这个函数中走过了完整的编译过程：<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/TcRnDriver.html#v:tcRnStmt"><code>tcRnStmt</code></a> 完成 rename &amp; typecheck、<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/Desugar.html#v:deSugarExpr"><code>deSugarExpr</code></a> 完成 desugar &amp; generate core、<a href="https://hackage.haskell.org/package/ghc-8.10.2/docs/HscMain.html#v:hscCompileCoreExpr"><code>hscCompileCoreExpr</code></a> 完成 codegen &amp; link。我们只关心类型检查部分。从注释我们可以清晰地知道 GHC 在类型检查时加 buff，实现创建交互式绑定以及 <code>it</code> 变量的策略：</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>                <span class="dt">Typechecking</span> <span class="dt">Stmts</span> <span class="kw">in</span> <span class="dt">GHCi</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true"></a></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true"></a><span class="dt">Here</span> is the grand plan, implemented <span class="kw">in</span> tcUserStmt</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true"></a></span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true"></a>        <span class="dt">What</span> you <span class="kw">type</span>                   <span class="dt">The</span> <span class="dt">IO</span> [<span class="dt">HValue</span>] that hscStmt returns</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true"></a>        <span class="co">-------------                   ------------------------------------</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true"></a>        <span class="kw">let</span> pat <span class="ot">=</span> expr          <span class="op">==&gt;</span>     <span class="kw">let</span> pat <span class="ot">=</span> expr <span class="kw">in</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> x, coerce <span class="dt">HVal</span> y, <span class="op">...</span>]</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true"></a>                                        bindings<span class="op">:</span> [x,y,<span class="op">...</span>]</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true"></a></span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true"></a>        pat <span class="ot">&lt;-</span> expr             <span class="op">==&gt;</span>     expr <span class="op">&gt;&gt;=</span> \ pat <span class="ot">-&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> x, coerce <span class="dt">HVal</span> y, <span class="op">...</span>]</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true"></a>                                        bindings<span class="op">:</span> [x,y,<span class="op">...</span>]</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true"></a></span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true"></a>        expr (<span class="kw">of</span> <span class="dt">IO</span> <span class="kw">type</span>)       <span class="op">==&gt;</span>     expr <span class="op">&gt;&gt;=</span> \ it <span class="ot">-&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> it]</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true"></a>          [<span class="dt">NB</span><span class="op">:</span> result <span class="fu">not</span> printed]      bindings<span class="op">:</span> [it]</span>
-<span id="cb13-15"><a href="#cb13-15" aria-hidden="true"></a></span>
-<span id="cb13-16"><a href="#cb13-16" aria-hidden="true"></a>        expr (<span class="kw">of</span> non<span class="op">-</span><span class="dt">IO</span> <span class="kw">type</span>,   <span class="op">==&gt;</span>     <span class="kw">let</span> it <span class="ot">=</span> expr <span class="kw">in</span> <span class="fu">print</span> it <span class="op">&gt;&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> it]</span>
-<span id="cb13-17"><a href="#cb13-17" aria-hidden="true"></a>          result showable)              bindings<span class="op">:</span> [it]</span>
-<span id="cb13-18"><a href="#cb13-18" aria-hidden="true"></a></span>
-<span id="cb13-19"><a href="#cb13-19" aria-hidden="true"></a>        expr (<span class="kw">of</span> non<span class="op">-</span><span class="dt">IO</span> <span class="kw">type</span>,</span>
-<span id="cb13-20"><a href="#cb13-20" aria-hidden="true"></a>          result <span class="fu">not</span> showable)  <span class="op">==&gt;</span>     <span class="fu">error</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>                <span class="dt">Typechecking</span> <span class="dt">Stmts</span> <span class="kw">in</span> <span class="dt">GHCi</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="dt">Here</span> is the grand plan, implemented <span class="kw">in</span> tcUserStmt</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">What</span> you <span class="kw">type</span>                   <span class="dt">The</span> <span class="dt">IO</span> [<span class="dt">HValue</span>] that hscStmt returns</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>        <span class="co">-------------                   ------------------------------------</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>        <span class="kw">let</span> pat <span class="ot">=</span> expr          <span class="op">==&gt;</span>     <span class="kw">let</span> pat <span class="ot">=</span> expr <span class="kw">in</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> x, coerce <span class="dt">HVal</span> y, <span class="op">...</span>]</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>                                        bindings<span class="op">:</span> [x,y,<span class="op">...</span>]</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>        pat <span class="ot">&lt;-</span> expr             <span class="op">==&gt;</span>     expr <span class="op">&gt;&gt;=</span> \ pat <span class="ot">-&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> x, coerce <span class="dt">HVal</span> y, <span class="op">...</span>]</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                                        bindings<span class="op">:</span> [x,y,<span class="op">...</span>]</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>        expr (<span class="kw">of</span> <span class="dt">IO</span> <span class="kw">type</span>)       <span class="op">==&gt;</span>     expr <span class="op">&gt;&gt;=</span> \ it <span class="ot">-&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> it]</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>          [<span class="dt">NB</span><span class="op">:</span> result <span class="fu">not</span> printed]      bindings<span class="op">:</span> [it]</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>        expr (<span class="kw">of</span> non<span class="op">-</span><span class="dt">IO</span> <span class="kw">type</span>,   <span class="op">==&gt;</span>     <span class="kw">let</span> it <span class="ot">=</span> expr <span class="kw">in</span> <span class="fu">print</span> it <span class="op">&gt;&gt;</span> <span class="fu">return</span> [coerce <span class="dt">HVal</span> it]</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>          result showable)              bindings<span class="op">:</span> [it]</span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>        expr (<span class="kw">of</span> non<span class="op">-</span><span class="dt">IO</span> <span class="kw">type</span>,</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a>          result <span class="fu">not</span> showable)  <span class="op">==&gt;</span>     <span class="fu">error</span></span></code></pre></div>
 <p><code>HValue</code> 相当于一个装着 <code>Any</code> 的容器——编译、求值一个表达式的结果可能有任意类型。GHC 将这几种情况分成三类，名曰 plans：</p>
 <ul>
 <li>Plan A. <code>[it &lt;- e; print e]</code>（<code>it</code> 不能是 <code>()</code>）</li>
@@ -242,54 +242,54 @@
 <li>Plan C. <code>[let it = e; print it]</code></li>
 </ul>
 <p>可在 <code>tcUserStmt</code> 中找到相应的代码：</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="co">-- TcRnDriver.hs</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true"></a><span class="ot">tcUserStmt ::</span> <span class="dt">GhciLStmt</span> <span class="dt">GhcPs</span> <span class="ot">-&gt;</span> <span class="dt">TcM</span> (<span class="dt">PlanResult</span>, <span class="dt">FixityEnv</span>)</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true"></a>tcUserStmt (dL<span class="ot">-&gt;</span><span class="dt">L</span> loc (<span class="dt">BodyStmt</span> _ expr _ _))</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true"></a>  <span class="ot">=</span> <span class="kw">do</span> { (rn_expr, fvs) <span class="ot">&lt;-</span> checkNoErrs (rnLExpr expr)</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true"></a><span class="co">-- ...省略</span></span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true"></a>          <span class="kw">let</span></span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true"></a>              <span class="co">-- [it = expr]</span></span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true"></a>              the_bind  <span class="ot">=</span> cL loc <span class="op">$</span> (mkTopFunBind <span class="dt">FromSource</span></span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true"></a>                                     (cL loc fresh_it) matches)</span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true"></a>                                         { fun_ext <span class="ot">=</span> fvs }</span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true"></a></span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true"></a>              <span class="co">-- [let it = expr]</span></span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true"></a>              let_stmt  <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">LetStmt</span> noExtField <span class="op">$</span> noLoc <span class="op">$</span> <span class="dt">HsValBinds</span> noExtField</span>
-<span id="cb14-15"><a href="#cb14-15" aria-hidden="true"></a>                           <span class="op">$</span> <span class="dt">XValBindsLR</span></span>
-<span id="cb14-16"><a href="#cb14-16" aria-hidden="true"></a>                               (<span class="dt">NValBinds</span> [(<span class="dt">NonRecursive</span>,unitBag the_bind)] [])</span>
-<span id="cb14-17"><a href="#cb14-17" aria-hidden="true"></a></span>
-<span id="cb14-18"><a href="#cb14-18" aria-hidden="true"></a>              <span class="co">-- [it &lt;- e]</span></span>
-<span id="cb14-19"><a href="#cb14-19" aria-hidden="true"></a>              bind_stmt <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">BindStmt</span> noExtField</span>
-<span id="cb14-20"><a href="#cb14-20" aria-hidden="true"></a>                                       (cL loc (<span class="dt">VarPat</span> noExtField (cL loc fresh_it)))</span>
-<span id="cb14-21"><a href="#cb14-21" aria-hidden="true"></a>                                       (nlHsApp ghciStep rn_expr)</span>
-<span id="cb14-22"><a href="#cb14-22" aria-hidden="true"></a>                                       (mkRnSyntaxExpr bindIOName)</span>
-<span id="cb14-23"><a href="#cb14-23" aria-hidden="true"></a>                                       noSyntaxExpr</span>
-<span id="cb14-24"><a href="#cb14-24" aria-hidden="true"></a></span>
-<span id="cb14-25"><a href="#cb14-25" aria-hidden="true"></a>              <span class="co">-- [; print it]</span></span>
-<span id="cb14-26"><a href="#cb14-26" aria-hidden="true"></a>              print_it  <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">BodyStmt</span> noExtField</span>
-<span id="cb14-27"><a href="#cb14-27" aria-hidden="true"></a>                                           (nlHsApp (nlHsVar interPrintName)</span>
-<span id="cb14-28"><a href="#cb14-28" aria-hidden="true"></a>                                           (nlHsVar fresh_it))</span>
-<span id="cb14-29"><a href="#cb14-29" aria-hidden="true"></a>                                           (mkRnSyntaxExpr thenIOName)</span>
-<span id="cb14-30"><a href="#cb14-30" aria-hidden="true"></a>                                                  noSyntaxExpr</span>
-<span id="cb14-31"><a href="#cb14-31" aria-hidden="true"></a></span>
-<span id="cb14-32"><a href="#cb14-32" aria-hidden="true"></a>              it_plans <span class="ot">=</span> [</span>
-<span id="cb14-33"><a href="#cb14-33" aria-hidden="true"></a>                    <span class="co">-- Plan A</span></span>
-<span id="cb14-34"><a href="#cb14-34" aria-hidden="true"></a>                    <span class="kw">do</span> { stuff<span class="op">@</span>([it_id], _) <span class="ot">&lt;-</span> tcGhciStmts [bind_stmt, print_it]</span>
-<span id="cb14-35"><a href="#cb14-35" aria-hidden="true"></a>                       ; it_ty <span class="ot">&lt;-</span> zonkTcType (idType it_id)</span>
-<span id="cb14-36"><a href="#cb14-36" aria-hidden="true"></a>                       ; when (isUnitTy <span class="op">$</span> it_ty) failM <span class="co">-- it 不能是 ()</span></span>
-<span id="cb14-37"><a href="#cb14-37" aria-hidden="true"></a>                       ; <span class="fu">return</span> stuff },</span>
-<span id="cb14-38"><a href="#cb14-38" aria-hidden="true"></a></span>
-<span id="cb14-39"><a href="#cb14-39" aria-hidden="true"></a>                        <span class="co">-- Plan B</span></span>
-<span id="cb14-40"><a href="#cb14-40" aria-hidden="true"></a>                    tcGhciStmts [bind_stmt],</span>
-<span id="cb14-41"><a href="#cb14-41" aria-hidden="true"></a></span>
-<span id="cb14-42"><a href="#cb14-42" aria-hidden="true"></a>                        <span class="co">-- Plan C</span></span>
-<span id="cb14-43"><a href="#cb14-43" aria-hidden="true"></a>                        <span class="co">-- 先看一看 let 绑定是不是良型的</span></span>
-<span id="cb14-44"><a href="#cb14-44" aria-hidden="true"></a>                        <span class="co">-- 否则会得到两个错误信息，一个在 let 绑定上，一个在打印上</span></span>
-<span id="cb14-45"><a href="#cb14-45" aria-hidden="true"></a>                    <span class="kw">do</span> { _ <span class="ot">&lt;-</span> checkNoErrs (tcGhciStmts [let_stmt])</span>
-<span id="cb14-46"><a href="#cb14-46" aria-hidden="true"></a>                       ; tcGhciStmts [let_stmt, print_it] } ]</span>
-<span id="cb14-47"><a href="#cb14-47" aria-hidden="true"></a></span>
-<span id="cb14-48"><a href="#cb14-48" aria-hidden="true"></a><span class="co">-- ...省略</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- TcRnDriver.hs</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="ot">tcUserStmt ::</span> <span class="dt">GhciLStmt</span> <span class="dt">GhcPs</span> <span class="ot">-&gt;</span> <span class="dt">TcM</span> (<span class="dt">PlanResult</span>, <span class="dt">FixityEnv</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>tcUserStmt (dL<span class="ot">-&gt;</span><span class="dt">L</span> loc (<span class="dt">BodyStmt</span> _ expr _ _))</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="ot">=</span> <span class="kw">do</span> { (rn_expr, fvs) <span class="ot">&lt;-</span> checkNoErrs (rnLExpr expr)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- ...省略</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>          <span class="kw">let</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- [it = expr]</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>              the_bind  <span class="ot">=</span> cL loc <span class="op">$</span> (mkTopFunBind <span class="dt">FromSource</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>                                     (cL loc fresh_it) matches)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>                                         { fun_ext <span class="ot">=</span> fvs }</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- [let it = expr]</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>              let_stmt  <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">LetStmt</span> noExtField <span class="op">$</span> noLoc <span class="op">$</span> <span class="dt">HsValBinds</span> noExtField</span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>                           <span class="op">$</span> <span class="dt">XValBindsLR</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>                               (<span class="dt">NValBinds</span> [(<span class="dt">NonRecursive</span>,unitBag the_bind)] [])</span>
+<span id="cb14-17"><a href="#cb14-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-18"><a href="#cb14-18" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- [it &lt;- e]</span></span>
+<span id="cb14-19"><a href="#cb14-19" aria-hidden="true" tabindex="-1"></a>              bind_stmt <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">BindStmt</span> noExtField</span>
+<span id="cb14-20"><a href="#cb14-20" aria-hidden="true" tabindex="-1"></a>                                       (cL loc (<span class="dt">VarPat</span> noExtField (cL loc fresh_it)))</span>
+<span id="cb14-21"><a href="#cb14-21" aria-hidden="true" tabindex="-1"></a>                                       (nlHsApp ghciStep rn_expr)</span>
+<span id="cb14-22"><a href="#cb14-22" aria-hidden="true" tabindex="-1"></a>                                       (mkRnSyntaxExpr bindIOName)</span>
+<span id="cb14-23"><a href="#cb14-23" aria-hidden="true" tabindex="-1"></a>                                       noSyntaxExpr</span>
+<span id="cb14-24"><a href="#cb14-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-25"><a href="#cb14-25" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- [; print it]</span></span>
+<span id="cb14-26"><a href="#cb14-26" aria-hidden="true" tabindex="-1"></a>              print_it  <span class="ot">=</span> cL loc <span class="op">$</span> <span class="dt">BodyStmt</span> noExtField</span>
+<span id="cb14-27"><a href="#cb14-27" aria-hidden="true" tabindex="-1"></a>                                           (nlHsApp (nlHsVar interPrintName)</span>
+<span id="cb14-28"><a href="#cb14-28" aria-hidden="true" tabindex="-1"></a>                                           (nlHsVar fresh_it))</span>
+<span id="cb14-29"><a href="#cb14-29" aria-hidden="true" tabindex="-1"></a>                                           (mkRnSyntaxExpr thenIOName)</span>
+<span id="cb14-30"><a href="#cb14-30" aria-hidden="true" tabindex="-1"></a>                                                  noSyntaxExpr</span>
+<span id="cb14-31"><a href="#cb14-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-32"><a href="#cb14-32" aria-hidden="true" tabindex="-1"></a>              it_plans <span class="ot">=</span> [</span>
+<span id="cb14-33"><a href="#cb14-33" aria-hidden="true" tabindex="-1"></a>                    <span class="co">-- Plan A</span></span>
+<span id="cb14-34"><a href="#cb14-34" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">do</span> { stuff<span class="op">@</span>([it_id], _) <span class="ot">&lt;-</span> tcGhciStmts [bind_stmt, print_it]</span>
+<span id="cb14-35"><a href="#cb14-35" aria-hidden="true" tabindex="-1"></a>                       ; it_ty <span class="ot">&lt;-</span> zonkTcType (idType it_id)</span>
+<span id="cb14-36"><a href="#cb14-36" aria-hidden="true" tabindex="-1"></a>                       ; when (isUnitTy <span class="op">$</span> it_ty) failM <span class="co">-- it 不能是 ()</span></span>
+<span id="cb14-37"><a href="#cb14-37" aria-hidden="true" tabindex="-1"></a>                       ; <span class="fu">return</span> stuff },</span>
+<span id="cb14-38"><a href="#cb14-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-39"><a href="#cb14-39" aria-hidden="true" tabindex="-1"></a>                        <span class="co">-- Plan B</span></span>
+<span id="cb14-40"><a href="#cb14-40" aria-hidden="true" tabindex="-1"></a>                    tcGhciStmts [bind_stmt],</span>
+<span id="cb14-41"><a href="#cb14-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-42"><a href="#cb14-42" aria-hidden="true" tabindex="-1"></a>                        <span class="co">-- Plan C</span></span>
+<span id="cb14-43"><a href="#cb14-43" aria-hidden="true" tabindex="-1"></a>                        <span class="co">-- 先看一看 let 绑定是不是良型的</span></span>
+<span id="cb14-44"><a href="#cb14-44" aria-hidden="true" tabindex="-1"></a>                        <span class="co">-- 否则会得到两个错误信息，一个在 let 绑定上，一个在打印上</span></span>
+<span id="cb14-45"><a href="#cb14-45" aria-hidden="true" tabindex="-1"></a>                    <span class="kw">do</span> { _ <span class="ot">&lt;-</span> checkNoErrs (tcGhciStmts [let_stmt])</span>
+<span id="cb14-46"><a href="#cb14-46" aria-hidden="true" tabindex="-1"></a>                       ; tcGhciStmts [let_stmt, print_it] } ]</span>
+<span id="cb14-47"><a href="#cb14-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-48"><a href="#cb14-48" aria-hidden="true" tabindex="-1"></a><span class="co">-- ...省略</span></span></code></pre></div>
 <p>GHC 在这里加的特效大概就是拼接 renamed AST 来进行下一步的 <code>tcGhciStmts</code>：</p>
 <ul>
 <li>Plan A：<code>e</code> 是一个 <code>IO</code> 操作，并且这个操作的返回值可以打印并且不是 <code>()</code>。将 <code>e</code> 的执行结果绑定到 <code>it</code> 上，并打印 <code>it</code></li>
@@ -299,9 +299,9 @@
 <p>从 Plan A 开始依次尝试，若全部失败就打印错误信息。这里的“打印”并不是使用 <code>print</code>，而是 <code>ic_int_print</code>。后者是一个任意具有类型 <code>a -&gt; IO ()</code> 的函数，可以通过 <code>-interactive-print=&lt;FUNCTION_NAME&gt;</code> 选项在 GHCi 启动时指定。</p>
 <h2 id="总结">总结</h2>
 <p>到目前为止，相信读者已经对 GHCi 这套操作很熟悉了。那么回过头来看我在文章开头提出的困惑：</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="op">:</span>set <span class="op">-</span><span class="dt">XNoExtendedDefaultRules</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true"></a>λ<span class="op">&gt;</span> <span class="fu">head</span> []</span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true"></a><span class="op">***</span> <span class="dt">Exception</span><span class="op">:</span> Prelude.head<span class="op">:</span> empty list</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="op">:</span>set <span class="op">-</span><span class="dt">XNoExtendedDefaultRules</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>λ<span class="op">&gt;</span> <span class="fu">head</span> []</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="op">***</span> <span class="dt">Exception</span><span class="op">:</span> Prelude.head<span class="op">:</span> empty list</span></code></pre></div>
 <p>为什么关闭了 <code>ExtendedDefaultRules</code> 之后 <code>head []</code> 依然能在 GHCi 中预期执行，没有产生 <code>a</code> 不确定的错误呢？再看一眼上面的三个 plans —— Plan A 和 Plan C 都需要 <code>Show</code> 约束，只有 Plan B 不需要。答案呼之欲出：我们在尝试获取并<strong>执行</strong>（并非打印）一个 <code>[IO a]</code> 列表的头部，但这个列表是空的，所以扔出了错误，给我们造成了“正在尝试打印空列表头部”的假象。读完这篇文章可能会获得一些没什么用的知识：</p>
 <ul>
 <li>像 <code>head</code>、<code>last</code> 这种 <code>[a] -&gt; a</code> 的函数在 GHCi 中应用到空列表时没有用到 <code>Show</code> 约束</li>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
     <title>berberman's space</title>
-    <link href="https://www.berberman.space/atom.xml" rel="self" />
-    <link href="https://www.berberman.space" />
-    <id>https://www.berberman.space/atom.xml</id>
+    <link href="https://space.typed.icu/atom.xml" rel="self" />
+    <link href="https://space.typed.icu" />
+    <id>https://space.typed.icu/atom.xml</id>
     <author>
         <name>berberman</name>
         <email>berberman@yandex.com</email>
@@ -11,8 +11,8 @@
     <updated>2021-04-11T23:58:00Z</updated>
     <entry>
     <title>Subtle cases in GHCi</title>
-    <link href="https://www.berberman.space/subtle-cases-in-ghci.html" />
-    <id>https://www.berberman.space/subtle-cases-in-ghci.html</id>
+    <link href="https://space.typed.icu/subtle-cases-in-ghci.html" />
+    <id>https://space.typed.icu/subtle-cases-in-ghci.html</id>
     <published>2021-04-11T23:58:00Z</published>
     <updated>2021-04-11T23:58:00Z</updated>
     <summary type="html"><![CDATA[<article>
@@ -306,8 +306,8 @@
 </entry>
 <entry>
     <title>Setting up a Haskell development environment on Arch Linux</title>
-    <link href="https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html" />
-    <id>https://www.berberman.space/setting-up-a-haskell-development-environment-on-arch-linux.html</id>
+    <link href="https://space.typed.icu/setting-up-a-haskell-development-environment-on-arch-linux.html" />
+    <id>https://space.typed.icu/setting-up-a-haskell-development-environment-on-arch-linux.html</id>
     <published>2020-10-27T00:00:00Z</published>
     <updated>2020-10-27T00:00:00Z</updated>
     <summary type="html"><![CDATA[<article>

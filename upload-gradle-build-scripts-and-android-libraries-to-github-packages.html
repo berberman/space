@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Space - Upload Gradle Build Scripts and Android Libraries to GitHub Packages</title>
+    <link rel="stylesheet" href="./css/default.css" />
+    <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="logo">
+            <a href="./">Space</a>
+        </div>
+        <nav>
+            <a href="./">Home</a>
+            <a href="./contact.html">Contact</a>
+            <a href="./archive.html">Archive</a>
+            <a href="./atom.xml">Feed</a>
+        </nav>
+    </header>
+
+    <main role="main">
+        <h1>Upload Gradle Build Scripts and Android Libraries to GitHub Packages</h1>
+        <article>
+    <section class="header">
+        Posted on July  5, 2023
+        
+        by berberman
+        
+    </section>
+    <section>
+        <h2 id="preface">Preface</h2>
+<p>This is a simple note I made while I was working on the plugin system in <a href="https://github.com/fcitx5-android/fcitx5-android">fcitx5-android</a>.
+In general, we are using the monorepo policy for this project, which means that the main application and plugins are all in the same git repository
+for the sake of reusing build scripts, versions, dependencies, as well as easy for creating releases.
+However, recently we decided to make a series of plugins that has nothing more functionality than shipping data files like Pinyin dictionaries
+and table dictionaries. Obviously, it would be cumbersome to have those plugins with data in our monorepo, and even more they could have different licenses.
+So we need an approach to build a plugin application independently from the monorepo, yet reusing the build logic, which is quite complicated
+and may deserve a long article to explain. Instead of somehow referencing the build scripts via git submodules, fortunately, <a href="https://github.com/features/packages">GitHub Packages</a> provides a nice maven repository for each organization which we can publish those gradle scripts and libraries to.</p>
+<h2 id="publish-the-build-scripts-as-gradle-plugins">Publish the Build Scripts as Gradle Plugins</h2>
+<p>The build scripts, or the build logic, have to be gradle plugins in order to be published.
+For example, in our project, we have a <em>standalone</em> gradle sub-project, rather than a module, called <code>build-logic</code>:</p>
+<pre><code>build-logic
+├── convention
+│   ├── build.gradle.kts
+│   └── src
+│       └── main
+│           └── kotlin
+│               ├── AndroidAppConventionPlugin.kt
+│               ├── AndroidBaseConventionPlugin.kt
+│               ├── AndroidLibConventionPlugin.kt
+│               ├── AndroidPluginAppConventionPlugin.kt
+│               ├── BuildMetadataPlugin.kt
+│               ├── CMakeDirPlugin.kt
+│               ├── DataDescriptorPlugin.kt
+│               ├── FcitxComponentPlugin.kt
+│               ├── FcitxHeadersPlugin.kt
+│               ├── NativeAppConventionPlugin.kt
+│               ├── NativeBaseConventionPlugin.kt
+│               ├── NativeLibConventionPlugin.kt
+│               ├── Utils.kt
+│               └── Versions.kt
+├── gradle
+│   └── wrapper
+│       ├── gradle-wrapper.jar -&gt; ../../../gradle/wrapper/gradle-wrapper.jar
+│       └── gradle-wrapper.properties -&gt; ../../../gradle/wrapper/gradle-wrapper.properties
+├── gradle.properties
+└── settings.gradle.kts</code></pre>
+<p>which is included in <code>settings.gradle.kts</code> of the root project:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>pluginManagement <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    includeBuild<span class="op">(</span><span class="st">&quot;build-logic&quot;</span><span class="op">)</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    repositories <span class="op">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>        gradlePluginPortal<span class="op">()</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        google<span class="op">()</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        mavenCentral<span class="op">()</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Therefore, everything in <code>build-logic:convention</code> will be available in all gradle scripts of the project. The only thing left is to publish the module <code>build-logic</code>.
+Generally, in <code>build.gradle.kts</code> (which is <code>convention</code> in the example), add <code>maven-publish</code> and <code>java-gradle-plugin</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>plugins <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// other plugins</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    `maven<span class="op">-</span>publish`</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    `java<span class="op">-</span>gradle<span class="op">-</span>plugin`</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>We do want to have the source code while using it as a library, so add the following snippet then:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>java <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    withSourcesJar<span class="op">()</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Finally, configure the maven publish plugin as the follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>publishing <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    repositories <span class="op">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>        maven <span class="op">{</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>            name <span class="op">=</span> <span class="st">&quot;GitHubPackages&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>            url <span class="op">=</span> uri<span class="op">(</span><span class="st">&quot;https://maven.pkg.github.com/OWNER/REPO&quot;</span><span class="op">)</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>            credentials <span class="op">{</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                username <span class="op">=</span> System<span class="op">.</span>getenv<span class="op">(</span><span class="st">&quot;GITHUB_ACTOR&quot;</span><span class="op">)</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                password <span class="op">=</span> System<span class="op">.</span>getenv<span class="op">(</span><span class="st">&quot;GITHUB_TOKEN&quot;</span><span class="op">)</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Also don’t forget to set a version for the project; otherwise the version of artifacts will be <code>unspecified</code>.</p>
+<h2 id="publish-android-libraries">Publish Android Libraries</h2>
+<p>Android Libraries will be packed into AAR files. This time we only need to add <code>maven-publish</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>plugins <span class="op">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">// other plugins</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    `maven<span class="op">-</span>publish`</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<h3 id="single-variant">Single Variant</h3>
+<p>If the library has only one build variant, saying <code>release</code>, we can add a <code>publishing {...}</code> block to <code>android {...}</code> block like:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>android <span class="op">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// other code</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  publishing <span class="op">{</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    singleVariant<span class="op">(</span><span class="st">&quot;release&quot;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>        withSourcesJar<span class="op">()</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>And then configure the maven publish plugin:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>publishing <span class="op">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    repositories <span class="op">{</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        maven <span class="op">{</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>            name <span class="op">=</span> <span class="st">&quot;GitHubPackages&quot;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>            url <span class="op">=</span> uri<span class="op">(</span><span class="st">&quot;https://maven.pkg.github.com/OWNER/REPO&quot;</span><span class="op">)</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>            credentials <span class="op">{</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                username <span class="op">=</span> System<span class="op">.</span>getenv<span class="op">(</span><span class="st">&quot;GITHUB_ACTOR&quot;</span><span class="op">)</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                password <span class="op">=</span> System<span class="op">.</span>getenv<span class="op">(</span><span class="st">&quot;GITHUB_TOKEN&quot;</span><span class="op">)</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    publications <span class="op">{</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>        register<span class="op">&lt;</span>MavenPublication<span class="op">&gt;(</span><span class="st">&quot;release&quot;</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>            groupId <span class="op">=</span> <span class="st">&quot;...&quot;</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>            artifactId <span class="op">=</span> <span class="st">&quot;...&quot;</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>            afterEvaluate <span class="op">{</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>                from<span class="op">(</span>components<span class="op">[</span><span class="st">&quot;release&quot;</span><span class="op">])</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>            <span class="op">}</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>        <span class="op">}</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Note that we need to create a publication specifying the <code>groupId</code> and <code>artifactId</code>, and include the source from <code>release</code> component manually.</p>
+<h3 id="multiple-variants">Multiple Variants</h3>
+<p>If the library has multiple variants, we can use <code>multipleVariants {...}</code> in <code>publishing {...}</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>android <span class="op">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// other code</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  publishing <span class="op">{</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    multipleVariants <span class="op">{</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>      allVariants<span class="op">()</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>      withJavadocJar<span class="op">()</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>This will create a component called <code>default</code> which includes all build variants. For more options, you can find more information on https://developer.android.com/build/publish-library/configure-pub-variants.
+The maven publish plugin configuration remains the same except that we should change the name of the component to <code>default</code>.</p>
+<h2 id="make-a-reverse-proxy">Make a Reverse Proxy</h2>
+<p>Once the build logic and libraries are published, they can be introduced to other projects.
+But I was surprised that as of this note was written, the GitHub maven repository <strong>cannot</strong> be read without a GitHub user token, even though it’s public: https://github.com/orgs/community/discussions/26634. To work around that, I created a new token with the permission to read GitHub packages, and then use a <a href="https://workers.cloudflare.com/">Cloudflare Worker</a> to add authorization header to the requests to the repo:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">addEventListener</span>(<span class="st">&quot;fetch&quot;</span><span class="op">,</span> <span class="bu">event</span> <span class="kw">=&gt;</span> {</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> url <span class="op">=</span> <span class="kw">new</span> <span class="fu">URL</span>(<span class="bu">event</span><span class="op">.</span><span class="at">request</span><span class="op">.</span><span class="at">url</span>)<span class="op">;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  url<span class="op">.</span><span class="at">hostname</span> <span class="op">=</span> <span class="st">&quot;maven.pkg.github.com&quot;</span><span class="op">;</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> request <span class="op">=</span> <span class="kw">new</span> <span class="fu">Request</span>(url<span class="op">,</span> <span class="bu">event</span><span class="op">.</span><span class="at">request</span>)<span class="op">;</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  request<span class="op">.</span><span class="at">headers</span><span class="op">.</span><span class="fu">append</span>(<span class="st">&quot;Authorization&quot;</span><span class="op">,</span><span class="st">&quot;Basic &lt;base64 encoded token&gt;&quot;</span>)<span class="op">;</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="bu">event</span><span class="op">.</span><span class="fu">respondWith</span>(<span class="fu">fetch</span>(request))<span class="op">;</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre></div>
+<p>Now in the project, we can add <code>maven ("https://&lt;worker&gt;.&lt;subdomain&gt;.workers.dev/OWNER/REPO/")</code>
+to <code>repositories {...}</code> block in <code>pluginManagement {...}</code> block and <code>dependencyResolutionManagement {...}</code> block
+to use gradle plugins and libraries from proxied maven repo respectively.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Although this is a very ad-hoc way to maintain a plugin system that has out-of-tree plugins, as the consistency is easy to get broken, implementing a sophisticated versioned API
+requires a bit more work that would go beyond the initial purpose of shipping data files as apk.</p>
+    </section>
+    <script src="https://utteranc.es/client.js" repo="berberman/space" issue-term="pathname" theme="github-light" crossorigin="anonymous" async>
+        </script>
+</article>
+    </main>
+
+    <footer>
+        © 2020 ❤
+        <a href="https://github.com/berberman">berberman</a>
+        WTFPL
+    </footer>
+</body>
+
+</html>

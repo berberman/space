@@ -1,5 +1,5 @@
 ---
-title: Subtle cases in GHCi
+title: Default Language Extensions Enabled in GHCi
 author: berberman
 date: 2021-04-11 23:58:00
 ---

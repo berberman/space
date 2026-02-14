@@ -1,0 +1,106 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          set -o pipefail
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v4.1.2/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Restore cache of .elan/toolchains
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.elan/toolchains
+          key: ${{ runner.os }}-success-${{ hashFiles('**/lean-toolchain') }}
+          restore-keys: |
+            ${{ runner.os }}-success-
+            ${{ runner.os }}-
+
+      - name: Compute cache keys
+        id: cache-keys
+        run: |
+          TOOLCHAIN=$(cat lean-toolchain | tr -d '[:space:]' | sha256sum | cut -d' ' -f1)
+          echo "toolchain=$TOOLCHAIN" >> "$GITHUB_OUTPUT"
+
+          LAKEFILE=""
+          while read -r file; do
+            filename=$(echo "$file" | sed 's|^\./||')
+            file_hash=$(sha256sum "$file" | cut -d' ' -f1)
+            LAKEFILE="$LAKEFILE--$filename-$file_hash"
+          done < <(find . -name 'lakefile.*' -type f -maxdepth 1 | sort)
+          echo "lakefile=$LAKEFILE" >> "$GITHUB_OUTPUT"
+
+          LAKE_MANIFEST=$(sha256sum lake-manifest.json | cut -d' ' -f1)
+          echo "manifest=$LAKE_MANIFEST" >> "$GITHUB_OUTPUT"
+
+      - name: Restore cache of .lake
+        uses: actions/cache/restore@v4
+        with:
+          path: .lake
+          key: ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-${{ steps.cache-keys.outputs.manifest }}-success
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-${{ steps.cache-keys.outputs.manifest }}-
+            ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-
+            ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-
+
+      - name: Build blog
+        run: lake exe generate-blog
+
+      - name: Save toolchain cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.elan/toolchains
+          key: ${{ runner.os }}-${{ job.status }}-${{ hashFiles('**/lean-toolchain') }}
+
+      - name: Save cache of .lake
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .lake
+          key: ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-${{ steps.cache-keys.outputs.manifest }}-${{ job.status }}
+
+      - name: Setup Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

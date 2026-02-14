@@ -2,7 +2,7 @@ import VersoBlog
 import Blog.Categories
 open Verso Genre Blog
 
-#doc (Post) "Hell Verso" =>
+#doc (Post) "Hello Verso" =>
 
 %%%
 authors := ["berberman"]

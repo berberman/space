@@ -178,14 +178,14 @@ android {
 }
 ```
 
-This will create a component called `default` which includes all build variants. You can find more information on <https://developer.android.com/build/publish-library/configure-pub-variants>.
+This will create a component called `default` which includes all build variants. You can find more information [here](https://developer.android.com/build/publish-library/configure-pub-variants).
 The maven publish plugin configuration remains the same except that we should change the name of the component to `default`.
 
 
 ## Make a Reverse Proxy
 
 Once the build logic and libraries are published, they can be introduced to other projects.
-But I was surprised that as of this note was written, the GitHub maven repository *cannot* be read without a GitHub user token, even though it's public: <https://github.com/orgs/community/discussions/26634>.
+But I was surprised that as of this note was written, the GitHub maven repository *cannot* be read without a GitHub user token, even though it's public: [discussions/26634](https://github.com/orgs/community/discussions/26634).
 To work around that, I created a new token with the permission to read GitHub packages, and then use a [Cloudflare Worker](https://workers.cloudflare.com/) to add authorization header to the requests to the repo:
 
 ```

@@ -133,6 +133,7 @@ def theme : Theme := { Theme.default with
               "});"
             "});"
           </script>
+          <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
           {{← builtinHeader }}
         </head>
         <body>

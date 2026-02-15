@@ -66,6 +66,9 @@ jobs:
             ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-
             ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-
 
+      - name: Setup typst
+        uses: typst-community/setup-typst@v4
+
       - name: Build blog
         run: lake exe generate-blog
 
@@ -91,7 +94,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_site'
+          path: "_site"
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'

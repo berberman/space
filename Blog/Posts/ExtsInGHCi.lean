@@ -1,5 +1,6 @@
 import VersoBlog
 import Blog.Categories
+import Blog.Meta
 open Verso Genre Blog
 
 #doc (Post) "Default Language Extensions Enabled in GHCi" =>
@@ -7,7 +8,7 @@ open Verso Genre Blog
 %%%
 authors := ["berberman"]
 date := {year := 2021, month := 4, day := 11}
-categories := [haskell]
+categories := [Category.haskell]
 %%%
 
 I wrote this post because I stumbled upon the fact that `head []` passes type checking in GHCi even with `ExtendedDefaultRules` disabled.
@@ -25,7 +26,7 @@ In this post, we will look at the language extensions responsible for these diff
 
 Some expressions that fail type checking in GHC pass in the GHCi environment. Let's look at the simplest example:
 
-```
+```haskell
 -- In ghci
 λ> show $ reverse []
 "[]"
@@ -41,7 +42,7 @@ As the error message suggests, the `a` in the `Show a` constraint is ambiguous;
 the compiler cannot infer it from `[]`, so it doesn't know which instance's show function to choose.
 This sounds convincing because the choice of `a` in `[a]` might change how `[a]` is displayed:
 
-```
+```haskell
 data X = X
   deriving Show
 
@@ -62,7 +63,7 @@ instance {-# OVERLAPS #-} Show [X] where
 
 It seems there is some special handling in GHCi that helps us select an a to display empty lists. Let's see which extensions GHCi enables by default:
 
-```
+```haskell
 λ> :showi language
 with the following modifiers:
   -XNoDatatypeContexts
@@ -75,13 +76,13 @@ with the following modifiers:
 
 `NoDatatypeContexts`... To digress a bit, I have to say `DatatypeContexts` turns out to be a completely failed feature. Let's look at an example:
 
-```
+```haskell
 newtype Eq a => B a = B a
 ```
 
 We want the a used to construct `B` to satisfy the `Eq` constraint. Okay, let's write a function to try it out:
 
-```
+```haskell
 bEq :: B a -> B a -> Bool
 bEq (B x) (B y) = x == y
 
@@ -141,7 +142,7 @@ With this handling, as long as the _default rules_ contain any type satisfying t
 
 In the previous section, we mentioned that `233` in `print 233` defaults to `Integer` due to _default rules_. What about in a binding for an integer literal?
 
-```
+```haskell
 qwq = 233
 -- Top-level binding with no type signature: qwq :: Integer
 ```
@@ -150,7 +151,7 @@ GHC tells us `qwq` is `Integer`. But there's no constraint involved here; why is
 This is the effect of the `MonomorphismRestriction`: bindings without type signatures may be subject to _default rules_.
 This makes our bindings less "polymorphic." Let's look at some examples from the Wiki:
 
-```
+```haskell
 f1 x = show x
 
 f2 = \x -> show x
@@ -172,7 +173,7 @@ This is somewhat counter-intuitive—eta-reduction actually changes semantics.
 According to the Haskell 2010 Report, this restriction resolves two issues: ambiguity not solvable by type signatures, and unnecessary re-computation.
 In GHCi, we usually don't want this monomorphization to happen:
 
-```
+```haskell
 λ> :set -XMonomorphismRestriction
 λ> plus = (+)
 λ> plus 233.3 3
@@ -187,7 +188,7 @@ In GHCi, we usually don't want this monomorphization to happen:
 
 Clearly, `plus` here is `Integer -> Integer -> Integer`. But compiling with GHC in a file works fine:
 
-```
+```haskell
 plus = (+)
 
 qwq = plus 233.3 3
@@ -204,7 +205,7 @@ I don't really know what this is for :P
 
 In a GHCi session, you can:
 
-```
+```haskell
 λ> let x = 1          -- Bind a pure variable
 λ> x' = 1             -- Bind a pure variable, let can be omitted
 λ> y <- pure 2        -- Bind IO result to a variable
@@ -219,7 +220,7 @@ In a GHCi session, you can:
 It feels a bit like being inside an `IO ()` do-notation, but you can omit `let`, and there's an extra `it`.
 This `it` is interesting; we'll discuss it later. Let's look at an entry function in GHCi that receives the input string:
 
-```
+```haskell
 runStmt :: GhciMonad m => String -> SingleStep -> m (Maybe GHC.ExecResult)
 runStmt input step = do
   pflags <- initParserOpts <$> GHC.getInteractiveDynFlags
@@ -258,7 +259,7 @@ runStmt input step = do
 `x = y` is a declaration, but `let x = y` is a statement. GHCi handles this very directly:
 after parsing the declarations, it rewrites the AST into a `let` statement and executes it:
 
-```
+```haskell
 -- GHCi/UI.hs
 
 run_decls :: GhciMonad m => [LHsDecl GhcPs] -> m (Maybe GHC.ExecResult)
@@ -284,7 +285,7 @@ where the statement goes through the full compilation process: [`tcRnStmt`](http
 and [`hscCompileCoreExpr`](https://hackage.haskell.org/package/ghc-8.10.2/docs/HscMain.html#v:hscCompileCoreExpr) (codegen & link).
 We only care about the type checking part. From the comments, we can clearly see the strategy GHC uses during type checking to create interactive bindings and the `it` variable:
 
-```
+```haskell
 Typechecking Stmts in GHCi
 
 Here is the grand plan, implemented in tcUserStmt
@@ -315,7 +316,7 @@ Here is the grand plan, implemented in tcUserStmt
 
 The corresponding code can be found in `tcUserStmt`:
 
-```
+```haskell
 -- TcRnDriver.hs
 
 tcUserStmt :: GhciLStmt GhcPs -> TcM (PlanResult, FixityEnv)
@@ -379,7 +380,7 @@ The latter is an arbitrary function of type `a -> IO ()` that can be specified v
 
 By now, I trust the reader is familiar with GHCi's operations. Let's look back at the confusion I raised at the beginning:
 
-```
+```haskell
 λ> :set -XNoExtendedDefaultRules
 λ> head []
 *** Exception: Prelude.head: empty list

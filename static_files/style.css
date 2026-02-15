@@ -1,3 +1,37 @@
+.mathyml-block-center {
+  text-align: center;
+}
+
+.mathyml-inline-span {
+  display: inline-block;
+}
+
+.mathyml-align-right {
+  text-align: right;
+  padding-left: 0em;
+  padding-right: 0em;
+}
+
+.mathyml-align-left {
+  text-align: left;
+  padding-left: 0em;
+  padding-right: 0em;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: 0.001dpcm) {
+  .mathyml-align-right {
+    text-align: -webkit-right;
+    padding-left: 0em;
+    padding-right: 0em;
+  }
+
+  .mathyml-align-left {
+    text-align: -webkit-left;
+    padding-left: 0em;
+    padding-right: 0em;
+  }
+}
+
 p a:link {
   color: #735c0f;
 }
@@ -68,10 +102,11 @@ h2 {
   font-size: 2rem;
 }
 
-code {
+/* 
+code:not(.math):not(.inline) {
   background-color: #f6f8fa;
   font-size: 85%;
-}
+} */
 
 blockquote {
   color: #6a737d;
@@ -80,10 +115,14 @@ blockquote {
   border-left: .25em solid #dfe2e5;
 }
 
-pre {
-  display: block;
+pre>code {
   overflow: auto;
-  padding: 12px;
+}
+
+.hl.lean.block {
+  padding: 1em;
+  overflow: auto;
+  background: #f5f2f0
 }
 
 
@@ -98,12 +137,6 @@ main .metadata {
   color: #000;
   text-decoration: none;
   font-family: cursive, serif;
-}
-
-.hl.lean.block {
-  margin-top: 0;
-  margin-bottom: 2.5rem;
-  overflow: auto;
 }
 
 .post-list {

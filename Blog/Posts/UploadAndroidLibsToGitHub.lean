@@ -1,6 +1,7 @@
 
 import VersoBlog
 import Blog.Categories
+import Blog.Meta
 open Verso Genre Blog
 
 #doc (Post) "Upload Gradle Build Scripts and Android Libraries to GitHub Packages" =>
@@ -8,7 +9,7 @@ open Verso Genre Blog
 %%%
 authors := ["berberman"]
 date := {year := 2023, month := 7, day := 5}
-categories := [other]
+categories := [Category.other]
 %%%
 
 
@@ -59,7 +60,7 @@ build-logic
 
 which is included in `settings.gradle.kts` of the root project:
 
-```
+```kotlin
 pluginManagement {
     includeBuild("build-logic")
     repositories {
@@ -73,7 +74,7 @@ pluginManagement {
 Therefore, everything in `build-logic:convention` will be available in all gradle scripts of the project. The only thing left is to publish the module `build-logic`.
 Generally, in `build.gradle.kts` (which is `convention` in the example), add `maven-publish` and `java-gradle-plugin`:
 
-```
+```kotlin
 plugins {
     // ...
     `maven-publish`
@@ -83,7 +84,7 @@ plugins {
 
 We do want to have the source code while using it as a library, so add the following snippet then:
 
-```
+```kotlin
 java {
     withSourcesJar()
 }
@@ -91,7 +92,7 @@ java {
 
 Finally, configure the maven publish plugin as the follows:
 
-```
+```kotlin
 publishing {
     repositories {
         maven {
@@ -112,7 +113,7 @@ Also don't forget to set a version for the project; otherwise the version of art
 
 Android Libraries will be packed into AAR files. This time we only need to add `maven-publish`:
 
-```
+```kotlin
 plugins {
     // ...
     `maven-publish`
@@ -123,7 +124,7 @@ plugins {
 
 If the library has only one build variant, saying `release`, we can add a `publishing {...}` to `android {...}` like:
 
-```
+```kotlin
 android {
   // ...
   publishing {
@@ -136,7 +137,7 @@ android {
 
 And then configure the maven publish plugin:
 
-```
+```kotlin
 publishing {
     repositories {
         maven {
@@ -166,7 +167,7 @@ Note that we need to create a publication specifying the `groupId` and `artifact
 
 If the library has multiple variants, we can use `multipleVariants {...}` in `publishing {...}`:
 
-```
+```kotlin
 android {
   // other code
   publishing {
@@ -188,7 +189,7 @@ Once the build logic and libraries are published, they can be introduced to othe
 But I was surprised that as of this note was written, the GitHub maven repository *cannot* be read without a GitHub user token, even though it's public: [discussions/26634](https://github.com/orgs/community/discussions/26634).
 To work around that, I created a new token with the permission to read GitHub packages, and then use a [Cloudflare Worker](https://workers.cloudflare.com/) to add authorization header to the requests to the repo:
 
-```
+```javascript
 addEventListener("fetch", event => {
   let url = new URL(event.request.url);
   url.hostname = "maven.pkg.github.com";
@@ -202,8 +203,7 @@ Now in the project, we can add `maven ("https://<worker>.<subdomain>.workers.dev
 to `repositories {...}` in `pluginManagement {...}` and `dependencyResolutionManagement {...}` block
 to use gradle plugins and libraries from proxied maven repo respectively. The entire `settings.gradle.kts` looks like:
 
-```
-
+```kotlin
 pluginManagement {
     repositories {
         maven("https://<worker>.<subdomain>.workers.dev/OWNER/REPO/")

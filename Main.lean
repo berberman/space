@@ -124,15 +124,8 @@ def theme : Theme := { Theme.default with
           <meta name="viewport" content="width=device-width, initial-scale=1"/>
           <title>{{ (← param (α := String) "title") }}</title>
           <link rel="stylesheet" href="/static/style.css"/>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/default.min.css"/>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
-          <script>
-            "document.addEventListener('DOMContentLoaded', function() {"
-              "document.querySelectorAll('pre:not(.hl)').forEach(function(block) {"
-                "hljs.highlightElement(block);"
-              "});"
-            "});"
-          </script>
+          <link href="/static/prism.css" rel="stylesheet" />
+          <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
           <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
           {{← builtinHeader }}
         </head>
@@ -150,6 +143,7 @@ def theme : Theme := { Theme.default with
              "© 2020-2026 ❤"
             <a href="https://github.com/berberman">"berberman"</a>
           </footer>
+          <script src="/static/prism.js"></script>
         </body>
       </html>
     }}

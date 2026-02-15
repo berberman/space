@@ -5,6 +5,7 @@ open Verso.Genre.Blog.Post
 
 namespace Blog
 
+namespace Category
 def lean : Category where
   name := "Lean"
   slug := "lean"
@@ -20,3 +21,7 @@ def typeTheory : Category where
 def other : Category where
   name := "Other"
   slug := "other"
+
+def blog : Category where
+  name := "Blog"
+  slug := "blog"

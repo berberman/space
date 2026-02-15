@@ -1,5 +1,6 @@
 import VersoBlog
 import Blog.Categories
+import Blog.Meta
 open Verso Genre Blog
 
 #doc (Post) "Setting up a Haskell development environment on Arch Linux" =>
@@ -7,7 +8,7 @@ open Verso Genre Blog
 %%%
 authors := ["berberman"]
 date := {year := 2020, month := 10, day := 27}
-categories := [haskell]
+categories := [Category.haskell]
 %%%
 
 Once you accept the principles of Arch Linux -- being simplicity and modernity -- everything goes easier.
@@ -30,13 +31,13 @@ Some users choose to avoid getting involved this sort of cheating, using static 
 
 We will use [Cabal](https://cabal.readthedocs.io/en/3.2/) without sandboxes as our build tool, and system level GHC as our compiler. Let's install them via system package management tool:
 
-```
+```bash
 # pacman -S ghc cabal-install
 ```
 
 Generate the configuration and update hackage index as normal:
 
-```
+```bash
 $ cabal update
 ```
 
@@ -56,7 +57,7 @@ program-default-options
 
 And if we want to install a Haskell program from cabal, we have to run:
 
-```
+```bash
 cabal install --ghc-options=-dynamic [package to install]
 ```
 
@@ -66,20 +67,20 @@ to let Cabal call GHC enabled dynamic linking.
 
 Personally, I would recommend [haskell-language-server](https://github.com/haskell/haskell-language-server), which is active in developing and provides unprecedented coding experience. Because we choose using dynamic GHC, we have to compile HLS by ourselves with dynamic option. Clone the source code:
 
-```
+```bash
 $ git clone https://github.com/haskell/haskell-language-server --recurse-submodules
 $ cd haskell-language-server
 ```
 
 *IMPORTANT:* Configure the HLS project locally:
 
-```
+```bash
 $ cabal configure --disable-library-vanilla --enable-shared --enable-executable-dynamic --ghc-options=-dynamic
 ```
 
 Finally install it:
 
-```
+```bash
 $ ./cabal-hls-install latest
 ```
 

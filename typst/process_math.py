@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
 LLM-generated batch process Typst placeholders in HTML files and replace them with MathML.
+Note:
+BeautifulSoup's html.parser only preserves whitespace inside <pre> and <textarea> tags.
+Verso generated Lean code blocks use <code> (not wrapped in <pre>), so every time BS4 parsed an HTML file — even ones without any Typst formulas — it collapsed
+multi-space runs and trailing spaces inside <span class="inter-text"> elements (e.g. "\n    " → "\n"), destroying indentation in code blocks.
 """
 
 import sys
+import re
 import subprocess
 import tempfile
 import argparse
@@ -140,18 +145,25 @@ def main():
     html_files = list(site_dir.rglob("*.html"))
     print(f"Scanning {len(html_files)} HTML files for Typst placeholders...")
 
+    # Regex to match typst placeholder tags without parsing the full HTML,
+    # which avoids BeautifulSoup's whitespace normalization that destroys
+    # spaces/indentation inside <code> blocks (e.g. <span class="inter-text">).
+    typst_pattern = re.compile(
+        r'<(?P<tag>span|div)\s+class="typst-(?P<kind>inline|block)">(?P<body>.*?)</(?P=tag)>',
+        re.DOTALL,
+    )
+
     formula_cache = {}
     unique_formulas = []
-    
+
     for html_file in html_files:
         with open(html_file, 'r', encoding='utf-8') as f:
-            soup = BeautifulSoup(f, 'html.parser')
-            
-        for tag in soup.find_all(class_=['typst-inline', 'typst-block']):
-            is_block = 'typst-block' in tag.get('class', [])
-            formula = tag.get_text().strip()
+            content = f.read()
+
+        for m in typst_pattern.finditer(content):
+            is_block = m.group('kind') == 'block'
+            formula = m.group('body').strip()
             key = (formula, is_block)
-            
             if key not in formula_cache:
                 formula_cache[key] = ""
                 unique_formulas.append(key)
@@ -161,7 +173,7 @@ def main():
         return
 
     print(f"Found {len(unique_formulas)} unique formulas. Compiling in batch...")
-    
+
     script_dir = Path(__file__).parent.resolve()
     rendered_blocks = batch_compile_typst(unique_formulas, script_dir)
 
@@ -170,26 +182,23 @@ def main():
 
     print("Compilation complete. Replacing placeholders in HTML...")
 
+    def _replace_match(m):
+        is_block = m.group('kind') == 'block'
+        formula = m.group('body').strip()
+        key = (formula, is_block)
+        mathml_str = formula_cache.get(key)
+        return mathml_str if mathml_str else m.group(0)
+
     modified_count = 0
     for html_file in html_files:
         with open(html_file, 'r', encoding='utf-8') as f:
-            soup = BeautifulSoup(f, 'html.parser')
-            
-        modified = False
-        for tag in soup.find_all(class_=['typst-inline', 'typst-block']):
-            is_block = 'typst-block' in tag.get('class', [])
-            formula = tag.get_text().strip()
-            key = (formula, is_block)
-            
-            mathml_str = formula_cache.get(key)
-            if mathml_str:
-                new_tag = BeautifulSoup(mathml_str, 'html.parser')
-                tag.replace_with(new_tag)
-                modified = True
-                
-        if modified:
+            original = f.read()
+
+        replaced = typst_pattern.sub(_replace_match, original)
+
+        if replaced != original:
             with open(html_file, 'w', encoding='utf-8') as f:
-                f.write(str(soup))
+                f.write(replaced)
             modified_count += 1
 
     print(f"Done! Updated math in {modified_count} HTML files.")

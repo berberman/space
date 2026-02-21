@@ -7,12 +7,13 @@ import sys
 import subprocess
 import tempfile
 import argparse
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from html.parser import HTMLParser
 
 
 class BodyExtractor(HTMLParser):
-    
+
     def __init__(self, remove_p=True):
         super().__init__()
         self.remove_p = remove_p
@@ -20,7 +21,7 @@ class BodyExtractor(HTMLParser):
         self.in_p = False
         self.body_content = []
         self.depth = 0
-        
+
     def handle_starttag(self, tag, attrs):
         if tag == 'body':
             self.in_body = True
@@ -29,7 +30,6 @@ class BodyExtractor(HTMLParser):
                 self.in_p = True
                 self.depth += 1
             else:
-                # Don't remove <p>, just track that we're in body content
                 self.in_p = True
                 self.depth += 1
                 attrs_str = ' '.join(f'{k}="{v}"' for k, v in attrs)
@@ -44,7 +44,7 @@ class BodyExtractor(HTMLParser):
                 self.body_content.append(f'<{tag} {attrs_str}>')
             else:
                 self.body_content.append(f'<{tag}>')
-    
+
     def handle_endtag(self, tag):
         if tag == 'body':
             self.in_body = False
@@ -56,11 +56,11 @@ class BodyExtractor(HTMLParser):
         elif self.in_p or (self.in_body and not self.remove_p):
             self.depth -= 1
             self.body_content.append(f'</{tag}>')
-    
+
     def handle_data(self, data):
         if self.in_p or (self.in_body and not self.remove_p):
             self.body_content.append(data)
-    
+
     def handle_startendtag(self, tag, attrs):
         if self.in_p or (self.in_body and not self.remove_p):
             attrs_str = ' '.join(f'{k}="{v}"' for k, v in attrs)
@@ -68,9 +68,81 @@ class BodyExtractor(HTMLParser):
                 self.body_content.append(f'<{tag} {attrs_str}/>')
             else:
                 self.body_content.append(f'<{tag}/>')
-    
+
     def get_content(self):
         return ''.join(self.body_content)
+
+
+def apply_stretchy_fixes(mathml_string: str) -> str:
+    """
+    Parses the generated MathML and safely disables stretchiness on parentheses
+    unless they contain 'tall' mathematical elements.
+    """
+    try:
+        # Register standard namespaces to avoid <ns0:math> prefixing
+        ET.register_namespace('', 'http://www.w3.org/1998/Math/MathML')
+        ET.register_namespace('h5', 'http://www.w3.org/1999/xhtml')
+
+        # Wrap in a dummy root so ET can parse it even if there are multiple root siblings
+        wrapped_mathml = f"<dummy>{mathml_string}</dummy>"
+        root = ET.fromstring(wrapped_mathml)
+
+        tall_tags = {
+            'mfrac', 'mtable', 'mroot', 'msqrt',
+            'munderover', 'munder', 'mover',
+            'msup', 'msubsup', 'msub'
+        }
+
+        def get_local_name(tag):
+            return tag.split('}', 1)[-1] if '}' in tag else tag
+
+        def contains_tall(elem):
+            if get_local_name(elem.tag) in tall_tags:
+                return True
+            for child in elem:
+                if contains_tall(child):
+                    return True
+            return False
+
+        # Traverse the XML tree looking for elements that contain <mo> siblings
+        for parent in root.iter():
+            children = list(parent)
+            i = 0
+            while i < len(children):
+                child = children[i]
+                if get_local_name(child.tag) == 'mo' and child.text and child.text.strip() == '(':
+                    needs_stretch = False
+                    found_closing = False
+                    j = i + 1
+
+                    # Walk through the siblings until we find the closing parenthesis
+                    while j < len(children):
+                        sibling = children[j]
+                        if get_local_name(sibling.tag) == 'mo' and sibling.text and sibling.text.strip() == ')':
+                            found_closing = True
+                            break
+
+                        if contains_tall(sibling):
+                            needs_stretch = True
+                        j += 1
+
+                    # Apply stretchy="false" to both fences if no tall elements were found
+                    if found_closing and not needs_stretch:
+                        child.set('stretchy', 'false')
+                        children[j].set('stretchy', 'false')
+                i += 1
+
+        # Reconstruct the string without the dummy wrapper
+        processed = root.text or ""
+        for child in root:
+            processed += ET.tostring(child, encoding='unicode', method='xml')
+
+        return processed.strip()
+
+    except Exception as e:
+        print(
+            f"Warning: Failed to apply stretchy fixes to MathML: {e}", file=sys.stderr)
+        return mathml_string
 
 
 def typst_math_to_mathml(math_formula: str, block_mode: bool = False) -> str:
@@ -99,21 +171,27 @@ ${formula}$
         f.write(template.replace('{formula}', math_formula))
     try:
         result = subprocess.run(
-            ['typst', 'compile', str(typst_file), '--format', 'html', '--features', 'html', '-'],
+            ['typst', 'compile', str(
+                typst_file), '--format', 'html', '--features', 'html', '-'],
             capture_output=True,
             text=True,
             cwd=str(script_dir),
             check=False
         )
         if result.returncode != 0:
-            raise RuntimeError(f"Typst compilation failed (exit code {result.returncode}):\nstderr: {result.stderr}\nstdout: {result.stdout}")
+            raise RuntimeError(
+                f"Typst compilation failed (exit code {result.returncode}):\nstderr: {result.stderr}\nstdout: {result.stdout}")
         html_output = result.stdout
         if not html_output:
-            raise RuntimeError(f"Typst produced no output\nstderr: {result.stderr}\nstdout: {result.stdout}")
+            raise RuntimeError(
+                f"Typst produced no output\nstderr: {result.stderr}\nstdout: {result.stdout}")
         parser = BodyExtractor(remove_p=not block_mode)
         parser.feed(html_output)
-        mathml = parser.get_content()
-        return mathml.strip()
+
+        # Get raw MathML and pass it through the new XML processor
+        raw_mathml = parser.get_content().strip()
+        return apply_stretchy_fixes(raw_mathml)
+
     except Exception as e:
         raise RuntimeError(f"Failed to convert Typst to MathML: {e}") from e
     finally:
@@ -121,7 +199,9 @@ ${formula}$
             if typst_file.exists():
                 typst_file.unlink()
         except Exception as e:
-            print(f"Warning: Failed to delete temporary file {typst_file}: {e}", file=sys.stderr)
+            print(
+                f"Warning: Failed to delete temporary file {typst_file}: {e}", file=sys.stderr)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -131,11 +211,14 @@ def main():
   Inline mode:  %(prog)s 'sum_1^2 x + 1'
   Block mode:   %(prog)s --block 'sum_1^2 x + 1'
 """)
-    parser.add_argument('formula', help='Typst math formula (without $ delimiters)')
-    parser.add_argument('--block', action='store_true', help='Use block/display mode instead of inline mode')
+    parser.add_argument(
+        'formula', help='Typst math formula (without $ delimiters)')
+    parser.add_argument('--block', action='store_true',
+                        help='Use block/display mode instead of inline mode')
     args = parser.parse_args()
     mathml = typst_math_to_mathml(args.formula, block_mode=args.block)
     print(mathml)
+
 
 if __name__ == '__main__':
     main()

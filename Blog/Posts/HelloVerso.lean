@@ -40,10 +40,20 @@ main :: IO ()
 main = putStrLn "Hello, World!"
 ```
 
-and [typst](https://typst.app/) for typesetting math formulas:
+and [typst](https://typst.app/) with [mathyml](https://codeberg.org/akida/mathyml) for typesetting math {typst}[$`f(x)`] formulas:
 
-```typstMath
-(1/ sqrt(2 pi)) e^(-x^2 / 2) quad mat(1, 2; 3, 4)
-```
+{typst}[$$`(1/ sqrt(2 pi)) e^(-x^2 / 2) quad mat(1, 2; 3, 4)`]
+
+{typst}[$$`pi(x)`]
+
+{typst}[$$`lr(a/b\]) = a = lr(\{a/b))`]
+
+{typst}[$$`mat(1, 0, 1; 0, 1, 2; augment: #2)`]
+
+{typst}[$$`mat(augment: #(vline: (-2, 2, 1), hline: (1, -1), stroke: 0.1em),
+  11, 12, 13, 14, 15;
+  21, 22, 23, 24, 25;
+  31, 32, 33, 34, 35;
+  41, 42, 43, 44, 45;)`]
 
 I hope to use this refresh to share more updates and thoughts on programming. Stay tuned!

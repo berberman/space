@@ -7,12 +7,7 @@ open Lean
 open Verso Output Html
 open Template
 open Elab Command
-
-structure TypstArgs where
-  content : String
-
-instance [Monad m] [MonadError m] : FromArgs TypstArgs m where
-  fromArgs := TypstArgs.mk <$> .positional `content (ValDesc.string.as "typst content")
+open Lean.Doc.Syntax
 
 def runTypstToMathML (blockMode : Bool) (content : String) : IO String :=
   IO.Process.run {
@@ -23,18 +18,17 @@ def runTypstToMathML (blockMode : Bool) (content : String) : IO String :=
   }
 
 @[role]
-def typstMath : RoleExpanderOf TypstArgs
-  | {content}, _stxs => do
-    let content ← runTypstToMathML false content
+def typst : RoleExpanderOf Unit
+  | (), contents => do
+    let #[inline] := contents
+      | throwError "Expected precisely one inline math, got {contents}"
+    let (s, block) ← match inline with
+      | `(inline| \math code($s)) => pure (s, false)
+      | `(inline| \displaymath code($s)) => pure (s, true)
+      | _ => throwErrorAt inline "Expected math code or displaymath code"
+    let content ← runTypstToMathML block s.getString
     let html := Html.text false content
     `(Inline.other (Blog.InlineExt.blob $(quote html)) #[])
-
-@[code_block typstMath]
-def typstMathBlock : CodeBlockExpanderOf Unit
-  | (), str => do
-    let content ← runTypstToMathML true str.getString
-    let html := Html.text false content
-    `((Block.other (Blog.BlockExt.blob $(quote html)) #[]))
 
 def mkLangCodeBlock (lang : String) (code : String) : Html :=
   {{<pre><code class=s!"language-{lang}">{{code}}</code></pre>}}

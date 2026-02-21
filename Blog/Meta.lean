@@ -9,25 +9,15 @@ open Template
 open Elab Command
 open Lean.Doc.Syntax
 
-def runTypstToMathML (blockMode : Bool) (content : String) : IO String :=
-  IO.Process.run {
-    cmd := "python3",
-    args := let args0 := #["typst/typst_to_mathml.py"]
-            let args1 := if blockMode then args0.push "--block" else args0
-            args1.push content
-  }
-
 @[role]
 def typst : RoleExpanderOf Unit
   | (), contents => do
     let #[inline] := contents
       | throwError "Expected precisely one inline math, got {contents}"
-    let (s, block) ← match inline with
-      | `(inline| \math code($s)) => pure (s, false)
-      | `(inline| \displaymath code($s)) => pure (s, true)
+    let html ← match inline with
+      | `(inline| \math code($s)) => pure {{ <span class = "typst-inline"> {{Html.text false s.getString }} </span>}}
+      | `(inline| \displaymath code($s)) => pure {{ <div class="typst-block"> {{Html.text false s.getString }} </div>}}
       | _ => throwErrorAt inline "Expected math code or displaymath code"
-    let content ← runTypstToMathML block s.getString
-    let html := Html.text false content
     `(Inline.other (Blog.InlineExt.blob $(quote html)) #[])
 
 def mkLangCodeBlock (lang : String) (code : String) : Html :=

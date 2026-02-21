@@ -164,4 +164,11 @@ def blog : Site := site Blog.FrontPage /
     Blog.Posts.ExtsInGHCi
     Blog.Posts.ArchHaskell
 
-def main := blogMain theme blog
+def main (options : List String) := do
+  let x ← blogMain theme blog (options := options)
+  let stdout ← IO.Process.run {
+    cmd := "python3",
+    args := #["typst/process_math.py", "_site"]
+  }
+  IO.println stdout
+  pure x

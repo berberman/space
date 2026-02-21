@@ -28,7 +28,7 @@ and may deserve a long article to explain. Instead of somehow referencing the bu
 The build scripts, or the build logic, have to be gradle plugins in order to be published.
 For example, in our project, we have a *standalone* gradle sub-project, rather than a module, called `build-logic`:
 
-```
+```bash
 build-logic
 ├── convention
 │   ├── build.gradle.kts

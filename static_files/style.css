@@ -1,3 +1,12 @@
+code:not([class*="language-"]) {
+  font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+  background-color: #f6f8fa;
+  color: #24292e;
+  font-size: 85%;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
 .mathyml-block-center {
   text-align: center;
 }
@@ -115,8 +124,11 @@ blockquote {
   border-left: .25em solid #dfe2e5;
 }
 
-pre>code {
-  overflow: auto;
+pre > code {
+  padding: 0;
+  background-color: transparent;
+  color: inherit;
+  font-size: 100%;
 }
 
 .hl.lean.block {

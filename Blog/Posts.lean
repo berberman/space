@@ -9,6 +9,7 @@ import Blog.Posts.ArchHaskell
 import Blog.Posts.ExtsInGHCi
 import Blog.Posts.UploadAndroidLibsToGitHub
 import Blog.Posts.HelloVerso
+import Blog.Posts.HEqAndAxiomK
 
 open Verso Genre Blog
 

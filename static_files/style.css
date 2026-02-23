@@ -137,6 +137,10 @@ pre > code {
   background: #f5f2f0
 }
 
+.lean-output.hl.lean.information{
+  overflow: auto;
+}
+
 
 main .metadata {
   font-size: 1.4rem;

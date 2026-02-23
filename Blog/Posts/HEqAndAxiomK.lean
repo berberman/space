@@ -19,7 +19,6 @@ While reading Conor McBride's _A Few Constructions on Constructors_,
 I came across his definition of Heterogeneous Equality (represented here using Lean axioms):
 
 ```lean empty
-
 -- Type constructor
 axiom HEq' : {α : Sort u} → α → {β : Sort u} → β → Prop
 
@@ -32,7 +31,6 @@ axiom HEq'.rec {α : Sort u} {a : α}
   (refl : motive a (HEq'.refl a))
   {β : Sort u} {b : β} (h : HEq' a b) :
   motive b h
-
 ```
 
 He also introduced a special elimination rule:
@@ -107,57 +105,39 @@ We need a way to establish a connection with HEq because we must utilize that sp
 We can start with the sigma type mentioned in the initial claim.
 As discussed in [_On Heterogeneous Equality_](https://homotopytypetheory.org/2012/11/21/on-heterogeneous-equality/),
 a sigma type is a pointed type, and heterogeneous equality is equivalent to homogeneous equality on pointed types.
-We can prove this using the universe-polymorphic `PSigma` (denoted here with the notation `Σ'`):
-
-These notations are equivalent:
-
-```lean empty (name := sig1)
-#check (α : Sort _) ×' α
-```
-```lean empty (name := sig2)
-#check Σ' α : Sort _, α
-```
-```lean empty (name := sig3)
-#check @PSigma (Sort _) (fun (α : Sort _) => α)
-```
-```leanOutput sig1
-(α : Sort u_1) ×' α : Type u_1
-```
-```leanOutput sig2
-(α : Sort u_1) ×' α : Type u_1
-```
-```leanOutput sig3
-(α : Sort u_1) ×' α : Type u_1
-```
+We can prove this using the universe-polymorphic `PSigma` (denoted here with the notation `Σ'`).
 
 ```lean empty
+-- Let's first introduce an abbreviation for the sigma type
+abbrev PointedType := Σ' α : Sort _, α
+
 def sigma_of_heq {α : Sort u} {x : α}
     {β : Sort u} (y : β)
-    (h : x ≍ y) : (⟨α, x⟩ : Σ' α : Sort u, α) ≡ (⟨β, y⟩ : Σ' β : Sort u, β) :=
+    (h : x ≍ y) : (⟨α, x⟩ : PointedType) ≡ (⟨β, y⟩ : PointedType) :=
   HEq.rec
-    (motive := fun {γ} y' _ => @Eq' (Σ' α : Sort u, α) ⟨α, x⟩ ⟨γ, y'⟩)
+    (motive := fun {γ} y' _ => @Eq' PointedType ⟨α, x⟩ ⟨γ, y'⟩)
     Eq'.rfl
     h
 
 def heq_of_sigma {α : Sort u} {x : α}
     {β : Sort u} (y : β)
-    (h : (⟨α, x⟩ : Σ' α : Sort u, α) ≡ (⟨β, y⟩ : Σ' β : Sort u, β)) : x ≍ y :=
-  let S : Σ' α : Sort u, α := ⟨α, x⟩
-  let T : Σ' β : Sort u, β := ⟨β, y⟩
+    (h : (⟨α, x⟩ : PointedType) ≡ (⟨β, y⟩ : PointedType)) : x ≍ y :=
+  let S : PointedType := ⟨α, x⟩
+  let T : PointedType := ⟨β, y⟩
   have heq : S.2 ≍ T.2 := Eq'.subst (motive := fun S' => S.2 ≍ S'.2) h HEq.rfl
   heq
 ```
 
 Without using `HEq.rec'` at all, we have achieved a bidirectional conversion between heterogeneous equality and homogeneous equality on sigma types.
-Consider our goal `z ≡ (Eq'.refl x)`: its heterogeneous version `z ≍ Eq'.refl x` can be obtained by applying `heq_of_sigma` to ⟨`x ≡ x, z⟩ ≡ ⟨x ≡ x, Eq'.refl x⟩`.
+Consider our goal `z ≡ (Eq'.refl x)`: its heterogeneous version `z ≍ Eq'.refl x` can be obtained by applying `heq_of_sigma` to `⟨x ≡ x, z⟩ ≡ ⟨x ≡ x, Eq'.refl x⟩`.
 And the `Eq'` of this sigma type can be proven directly:
 
 ```lean empty
 noncomputable def sigma_eq {α : Sort u} (x : α) (z : x ≡ x) :
-  (⟨x ≡ x, z⟩ : Σ' α : Sort (max 1 u), α) ≡ (⟨x ≡ x, Eq'.refl x⟩ : Σ' β : Sort (max 1 u), β) :=
+  (⟨x ≡ x, z⟩ : PointedType) ≡ (⟨x ≡ x, Eq'.refl x⟩ : PointedType) :=
   Eq'.rec
     (motive := fun x' q =>
-      @Eq' (Σ' α : Sort (max 1 u), α) ⟨x ≡ x', q⟩ ⟨x ≡ x, Eq'.refl x⟩)
+      @Eq' PointedType ⟨x ≡ x', q⟩ ⟨x ≡ x, Eq'.refl x⟩)
     Eq'.rfl
     z
 ```

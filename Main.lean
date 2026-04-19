@@ -159,6 +159,7 @@ def blog : Site := site Blog.FrontPage /
   static "static" ← "static_files"
   "about" Blog.About
   "blog" Blog.Posts with
+    Blog.Posts.ConvoyPatterns
     Blog.Posts.HEqAndAxiomK
     Blog.Posts.HelloVerso
     Blog.Posts.UploadAndroidLibsToGitHub

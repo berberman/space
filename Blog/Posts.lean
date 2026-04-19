@@ -10,6 +10,7 @@ import Blog.Posts.ExtsInGHCi
 import Blog.Posts.UploadAndroidLibsToGitHub
 import Blog.Posts.HelloVerso
 import Blog.Posts.HEqAndAxiomK
+import Blog.Posts.ConvoyPatterns
 
 open Verso Genre Blog
 

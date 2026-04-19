@@ -1,10 +1,31 @@
-code:not([class*="language-"]) {
+
+code:not([class*="language-"]):not(.hl):not(.lean) {
   font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
-  background-color: #f6f8fa;
-  color: #24292e;
-  font-size: 85%;
-  padding: 0.2em 0.4em;
-  border-radius: 3px;
+  background: #f3f4f6;
+  color: var(--verso-code-color);
+  padding: 0.04em 0.2em;
+  border-radius: 0.2rem;
+  line-height: 1;
+  font-size: 0.95em;
+  vertical-align: -0.02em;
+}
+
+code.hl.lean.inline {
+  background: #f3f4f6;
+  color: var(--verso-code-color);
+  padding: 0.04em 0.2em;
+  border-radius: 0.2rem;
+  line-height: 1;
+  font-size: 0.95em;
+  vertical-align: -0.02em;
+}
+
+.hl.lean.block {
+  padding: 1em;
+  overflow-x: auto;
+  background: var(--page-surface);
+  border: 1px solid var(--page-border);
+  border-radius: 0.5rem;
 }
 
 .mathyml-block-center {
@@ -94,7 +115,7 @@ footer {
 }
 
 p {
-  line-height: 1.4;
+  line-height: 1.7;
   font-size: 19px;
 }
 

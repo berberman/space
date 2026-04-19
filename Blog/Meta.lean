@@ -39,3 +39,4 @@ lang_code_block haskell
 lang_code_block kotlin
 lang_code_block javascript
 lang_code_block bash
+lang_code_block coq

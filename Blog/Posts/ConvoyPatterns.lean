@@ -196,11 +196,11 @@ h : x'✝ :: xs✝ = []
 ⊢ β x
 ```
 
-The `lst` in the motive will are substituted with the indices of those two constructors for `Member`: `x :: xs✝` and `x'✝ :: xs✝` respectively,
+The `lst` in the motive are substituted with the indices of those two constructors for `Member`: `x :: xs✝` and `x'✝ :: xs✝` respectively,
 corresponding to the two match cases.
 
 Now we can feed those false equalities to {leanInline empty}`List.noConfusion`.
-Lean will figure out it's impossible for `.cons` to equal `.nil`, allowing us to prove anything:
+Lean will figure out it's impossible for `.cons` to equal `.nil`, allowing us to prove anything. `<|` is Lean version of `$` to avoid parentheses.
 
 ```lean -keep empty
 def HList.get {α β x} {xs : List α} (mls : @HList α β xs) (m : @Member α x xs) : β x :=
@@ -230,12 +230,13 @@ def HList.get {α β x} {xs : List α} (mls : @HList α β xs) (m : @Member α x
   | @cons _ _ x' xs' y ys =>
     m.casesOn
       (motive := fun lst _ => lst = x' :: xs' → β x)
-      (fun h => List.noConfusion rfl (heq_of_eq h) (fun hx _=> (eq_of_heq hx) ▸ y))
-      (fun m' h => List.noConfusion rfl (heq_of_eq h) (fun _ hxs => get ((eq_of_heq hxs) ▸ ys) m'))
+      (fun h => List.noConfusion rfl (heq_of_eq h) (fun hx _=> eq_of_heq hx ▸ y))
+      (fun m' h => List.noConfusion rfl (heq_of_eq h) (fun _ hxs => get (eq_of_heq hxs ▸ ys) m'))
       rfl
 ```
 
 Here, we insert `lst = x' :: xs'` into the motive to obtain the equalities `x = x'` in the `head` case and `xs✝ = xs'` in the `tail` case.
+`▸` is the "cast" notation, similar to {leanInline empty}`Eq.subst`.
 Without these equalities, we'd run into the issue that the element we extracted from the correct position cannot be proven to be our desired element.
 
 ### Convoy Pattern, without K

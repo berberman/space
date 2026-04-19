@@ -61,7 +61,7 @@ def HList.get {α β x} {xs : List α} (mls : @HList α β xs) (m : @Member α x
     | .tail m' => get ys m'
 ```
 
-For the `.cons case`, we can pattern match on membership and recursively look for the element we want because membership encodes the position of that element.
+For the `.cons` case, we can pattern match on membership and recursively look for the element we want because membership encodes the position of that element.
 But what should we do for the `.nil` case? Here is the goal state:
 
 ```leanOutput HList.get.nil
@@ -366,7 +366,7 @@ example {α : Type} {n : Nat} (v : Vec α (n + 1)) : ∃ (v' : Vec α n) (x : α
     rfl
 ```
 
-Indeed, .nil is solved, but now `.cons` is broken: after fixing the index `n_` to `n + 1`, `h₁ : n + 1 = n✝ → ∃ v' x, v = Vec.cons x v'`
+Indeed, `.nil` is solved, but now `.cons` is broken: after fixing the index `n_` to `n + 1`, `h₁ : n + 1 = n✝ → ∃ v' x, v = Vec.cons x v'`
 becomes a useless assumption because here `n + 1 = n✝ + 1`.
 
 We need a different approach.

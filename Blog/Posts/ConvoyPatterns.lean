@@ -19,8 +19,8 @@ categories := [Category.lean]
 
 One day my friend [CircuitCoder](https://c-3.moe/) asked a [Rocq](https://rocq-prover.org/) question in a group chat:
 
-> "How do you prove the following theorem without using the `dependent destruction` tactic?
-  It seems to require the Convoy Pattern, which I tried learning but still don't quite grasp..."
+> How do you prove the following theorem without using the `dependent destruction` tactic?
+  It seems to require the Convoy Pattern, which I tried learning but still don't quite grasp...
 
 ```coq
 Inductive vector (A : Type) : nat -> Type :=
@@ -35,7 +35,9 @@ Let's explore dependent pattern matching and the convoy pattern in Lean!
 
 # HList
 
-Let's consider this heterogeneous list from Chapter 9.2 of _Certified Programming with Dependent Types_ (CPDT):
+Let's consider this heterogeneous list from Chapter 9.2 of _Certified Programming with Dependent Types_ (CPDT)[^cpdt]:
+
+[^cpdt]: [Adam Chlipala. 2013. Certified programming with dependent types: a pragmatic introduction to the Coq proof assistant. MIT Press.](https://adam.chlipala.net/cpdt/)
 
 ```lean empty
 inductive HList {α : Type u} {β : α → Type u} : List α → Type u where

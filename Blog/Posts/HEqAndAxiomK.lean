@@ -15,8 +15,10 @@ categories := [Category.lean]
 ```
 
 
-While reading Conor McBride's _A Few Constructions on Constructors_,
-I came across his definition of Heterogeneous Equality (represented here using Lean axioms):
+While reading _A Few Constructions on Constructors_[^paper],
+I came across this definition of Heterogeneous Equality (represented here using Lean axioms):
+
+[^paper]: [Conor McBride, Healfdene Goguen, and James McKinna. 2004. A few constructions on constructors.](https://dl.acm.org/doi/10.1007/11617990_12)
 
 ```lean empty
 /-- Type constructor -/
@@ -33,7 +35,7 @@ axiom HEq'.rec {α : Sort u} {a : α}
   motive b h
 ```
 
-He also introduced a special elimination rule:
+The paper also introduces a special elimination rule:
 
 ```lean empty
 axiom HEq'.rec' {α : Sort u} {a : α}
@@ -107,9 +109,11 @@ Directly obtaining `z ≡ (Eq'.refl x)` is tricky.
 We need a way to connect it to {lean empty}`HEq` so we can exploit that special eliminator.
 
 We can start with the sigma type mentioned in the initial claim.
-As discussed in [_On Heterogeneous Equality_](https://homotopytypetheory.org/2012/11/21/on-heterogeneous-equality/),
+As discussed in _On Heterogeneous Equality_[^article],
 a sigma type is a pointed type, and heterogeneous equality is equivalent to homogeneous equality on pointed types.
 We can prove this using the universe-polymorphic {lean empty}`PSigma` (denoted here with `Σ'`).
+
+[^article]: [Jesse McKeown. 2012. On Heterogeneous Equality.](https://homotopytypetheory.org/2012/11/21/on-heterogeneous-equality/)
 
 ```lean empty
 /-- An abbreviation for the sigma type -/

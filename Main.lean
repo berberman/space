@@ -21,7 +21,82 @@ def Verso.Genre.Blog.Date.toReadable (date: Date) : String :=
     | _ => "Unknown"
   s!"{m} {date.day}, {date.year}"
 
-open Output Html Template Theme in
+open Output Html Template Theme
+
+namespace HeadingLinks
+
+/-- Find the value of an HTML attribute. -/
+def attr? (name : String) (attrs : Array (String × String)) : Option String := do
+  let attr ← attrs.find? (·.1 == name)
+  return attr.2
+
+/-- Add a quiet `#` permalink to every heading that already has an `id`. -/
+partial def run (pagePath : String) : Html → Html
+  | .text escape str => .text escape str
+  | .seq contents => .seq (contents.map (run pagePath))
+  | .tag name attrs contents =>
+    let contents := run pagePath contents
+    if ["h2", "h3", "h4", "h5", "h6"].contains name then
+      match attr? "id" attrs with
+      | some id =>
+        .tag name attrs (contents ++ {{<a class="heading-link" href=s!"{pagePath}#{id}" aria-label="Link to this section">"#"</a>}})
+      | none => .tag name attrs contents
+    else
+      .tag name attrs contents
+
+end HeadingLinks
+
+namespace Footnotes
+
+abbrev Note := Html
+
+/-- Notes already encountered in this post. -/
+abbrev M := StateM (Array Note)
+
+def isFootnote (name : String) (attrs : Array (String × String)) : Bool :=
+  name == "details" && HeadingLinks.attr? "class" attrs == some "footnote"
+
+/-- Remove Verso's inline footnote summary from the collected note body. -/
+def stripSummary : Html → Html
+  | .seq contents =>
+    match contents.toList with
+    | .tag "summary" _ _ :: rest => .seq rest.toArray
+    | _ => .seq contents
+  | html => html
+
+def ref (pagePath : String) (number : Nat) : Html :=
+  {{<sup id=s!"fnref-{number}" class="footnote-ref"><a href=s!"{pagePath}#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
+
+def item (pagePath : String) (number : Nat) (body : Html) : Html :=
+  {{<li id=s!"fn-{number}">{{body}} <a class="footnote-backref" href=s!"{pagePath}#fnref-{number}" aria-label=s!"Back to footnote {number} reference">"↩"</a></li>}}
+
+def items (pagePath : String) (notes : Array Note) : Array Html :=
+  notes.foldl (init := (#[], 1)) (fun (rendered, number) body =>
+    (rendered.push (item pagePath number body), number + 1)) |>.1
+
+def renderSection (pagePath : String) (notes : Array Note) : Html :=
+  {{<section id="footnotes" class="footnotes" aria-label="Footnotes"><hr/><ol>{{items pagePath notes}}</ol></section>}}
+
+partial def collect (pagePath : String) : Html → M Html
+  | .text escape str => return .text escape str
+  | .seq contents => return .seq (← contents.mapM <| collect pagePath)
+  | .tag name attrs contents => do
+    if isFootnote name attrs then
+      let notes ← get
+      let number := notes.size + 1
+      modify (·.push Html.empty)
+      let body ← collect pagePath <| stripSummary contents
+      modify (·.set! (number - 1) body)
+      return ref pagePath number
+    else
+      return .tag name attrs (← collect pagePath contents)
+
+/-- Replace inline footnotes with references and append a footnote list -/
+def run (pagePath : String) (content : Html) : Html :=
+  let (content, notes) := (collect pagePath content).run #[]
+  if notes.isEmpty then content else content ++ renderSection pagePath notes
+
+end Footnotes
 
 def theme : Theme := { Theme.default with
   archiveEntryTemplate : Template := do
@@ -69,6 +144,7 @@ def theme : Theme := { Theme.default with
       if let some p := (← param? "path") then
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
+    let pagePath := "/" ++ "/".intercalate (← currentPath).toList ++ "/"
     let metadata := match (← param? "metadata") with
          | none => Html.empty
          | some md => {{
@@ -91,7 +167,7 @@ def theme : Theme := { Theme.default with
     pure {{
       <h1>{{← param "title"}}</h1>
       {{ metadata }}
-      {{← param "content"}}
+      {{HeadingLinks.run pagePath (Footnotes.run pagePath (← param "content"))}}
       <script src="https://utteranc.es/client.js"
         repo="berberman/space"
         issue-term="pathname"
@@ -159,6 +235,75 @@ def theme : Theme := { Theme.default with
     params := id
   }
 
+namespace Anchors
+
+open Std
+
+/-- We keep track of IDs already used in the current post. -/
+abbrev M := StateM (HashSet Multi.Slug)
+
+def idSlug? (metadata : Option Post.Meta) : Option Multi.Slug := do
+  let md ← metadata
+  let htmlId ← md.htmlId
+  return htmlId.sluggify
+
+/-- Collect all existing section IDs -/
+partial def collectIds (part : Part Post) : M Unit := do
+  if let some htmlId := idSlug? part.metadata then
+    modify (·.insert htmlId)
+  part.subParts.forM collectIds
+
+/-- Set `htmlId` on a part's metadata -/
+def withId (fallback : Post.Meta) (part : Part Post) (htmlId : String) : Post.Meta :=
+  match part.metadata with
+  | some md => { md with htmlId := some htmlId }
+  | none => { fallback with htmlId := some htmlId }
+
+/--
+Add IDs to one section subtree.
+
+Each section keeps an explicit `htmlId` if it has one;
+otherwise its title is slugified and made unique within the post.
+-/
+partial def addPartIds (fallback : Post.Meta) (part : Part Post) : M (Part Post) := do
+  let part ←
+    match part.metadata >>= (·.htmlId) with
+    | some _ => pure part
+    | none =>
+      let slug := Multi.Slug.unique (← get) part.titleString.sluggify
+      modify (·.insert slug)
+      pure { part with metadata := some (withId fallback part slug.toString) }
+  let subParts ← part.subParts.mapM (addPartIds fallback)
+  pure { part with subParts }
+
+/--
+Add generated section IDs to a blog post.
+
+The root post metadata is not changed because the template renders the post title itself
+-/
+def addPostIds (post : BlogPost) : BlogPost :=
+  match post.contents.metadata with
+  | none => post
+  | some rootMetadata =>
+    let used := (collectIds post.contents).run {} |>.2
+    let subParts := post.contents.subParts.mapM (addPartIds rootMetadata) |>.run' used
+    { post with contents := { post.contents with subParts } }
+
+def addDirIds : Dir → Dir
+  | .page name id txt contents => .page name id txt (contents.map addDirIds)
+  | .blog name id txt posts => .blog name id txt (posts.map addPostIds)
+  | .static name files => .static name files
+
+/--
+Add stable HTML IDs to every blog post section heading.
+
+We fill `htmlId` on post subparts before VersoBlog renders them.
+-/
+def addSectionAnchors : Site → Site
+  | .page id txt contents => .page id txt (contents.map addDirIds)
+  | .blog id txt posts => .blog id txt (posts.map addPostIds)
+
+end Anchors
 
 def blog : Site := site Blog.FrontPage /
   static "static" ← "static_files"
@@ -172,7 +317,7 @@ def blog : Site := site Blog.FrontPage /
     Blog.Posts.ArchHaskell
 
 def main (options : List String) := do
-  let x ← blogMain theme blog (options := options)
+  let x ← blogMain theme (Anchors.addSectionAnchors blog) (options := options)
   let stdout ← IO.Process.run {
     cmd := "python3",
     args := #["typst/process_math.py", "_site"]

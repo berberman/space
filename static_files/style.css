@@ -215,6 +215,102 @@ article h2 {
   border-top: 1px solid var(--page-border);
 }
 
+h2[id],
+h3[id],
+h4[id],
+h5[id],
+h6[id] {
+  scroll-margin-top: var(--space-7);
+}
+
+.heading-link {
+  margin-left: var(--space-2);
+  color: var(--page-subtle);
+  font-size: 0.75em;
+  font-weight: 600;
+  text-decoration: none;
+  opacity: 0;
+}
+
+h2[id]:hover > .heading-link,
+h2[id]:focus-within > .heading-link,
+h3[id]:hover > .heading-link,
+h3[id]:focus-within > .heading-link,
+h4[id]:hover > .heading-link,
+h4[id]:focus-within > .heading-link,
+h5[id]:hover > .heading-link,
+h5[id]:focus-within > .heading-link,
+h6[id]:hover > .heading-link,
+h6[id]:focus-within > .heading-link {
+  opacity: 1;
+}
+
+.heading-link:hover,
+.heading-link:focus-visible {
+  color: var(--page-accent-strong);
+}
+
+.footnote-ref {
+  font-family: var(--verso-structure-font-family);
+  font-size: 0.72em;
+  line-height: 1;
+  vertical-align: super;
+}
+
+.footnote-ref a {
+  padding: 0 0.12rem;
+  color: var(--page-accent-strong);
+  text-decoration: none;
+}
+
+.footnote-ref:target a,
+.footnotes li:target {
+  background: var(--page-accent-soft);
+}
+
+.footnotes {
+  max-width: var(--content-width);
+  margin: var(--space-7) auto 0;
+  color: var(--page-muted);
+  font-size: 0.95rem;
+}
+
+.footnotes hr {
+  margin: 0 0 var(--space-4);
+  border: 0;
+  border-top: 1px solid var(--page-border);
+}
+
+.footnotes ol {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.footnotes li {
+  padding-left: var(--space-2);
+}
+
+.footnotes li + li {
+  margin-top: var(--space-3);
+}
+
+.footnotes p {
+  margin: 0;
+}
+
+.footnote-backref {
+  margin-left: var(--space-2);
+  color: var(--page-subtle);
+  font-family: var(--verso-structure-font-family);
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
+.footnote-backref:hover,
+.footnote-backref:focus-visible {
+  color: var(--page-accent-strong);
+}
+
 main > h2 {
   max-width: var(--content-width);
   margin-left: auto;
@@ -512,7 +608,7 @@ main .metadata {
 }
 
 .post-list > li .read-more::after {
-  content: " ->";
+  content: " →";
 }
 
 code,

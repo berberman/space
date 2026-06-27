@@ -147,6 +147,11 @@ main {
   padding: var(--space-6) 0 var(--space-8);
 }
 
+main > *,
+article > * {
+  min-width: 0;
+}
+
 article,
 main > h1,
 main > .metadata,
@@ -164,6 +169,12 @@ main > math[display="block"] {
   max-width: var(--content-width);
   margin-left: auto;
   margin-right: auto;
+}
+
+img,
+svg,
+iframe {
+  max-width: 100%;
 }
 
 article > :first-child,
@@ -369,10 +380,16 @@ hr {
 
 table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   border: 1px solid var(--page-border);
   background: var(--page-surface);
   font-size: 0.95rem;
+}
+
+main > table {
+  display: block;
+  overflow-x: auto;
 }
 
 th,
@@ -568,7 +585,22 @@ main .metadata {
 }
 
 .post-list > li > * {
+  width: 100%;
   max-width: var(--content-width);
+}
+
+.comments {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: var(--space-7) auto 0;
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--page-border);
+}
+
+.comments .giscus,
+.comments .giscus-frame {
+  width: 100%;
+  max-width: 100%;
 }
 
 .post-list > li .title {
@@ -858,6 +890,7 @@ code.hl.lean.inline {
 }
 
 .mathyml-block-center {
+  overflow-x: auto;
   text-align: center;
 }
 
@@ -906,6 +939,35 @@ math[display="block"] {
     padding-top: var(--space-6);
   }
 
+  main > *,
+  article > *,
+  .post-list,
+  .post-list > li,
+  .post-list > li > *,
+  .categories,
+  .category-directory,
+  .comments,
+  .comments .giscus,
+  .comments .giscus-frame,
+  .hl.lean.block,
+  .lean-output,
+  pre,
+  table,
+  .mathyml-block-center,
+  math[display="block"] {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  pre,
+  .hl.lean.block,
+  .lean-output,
+  table,
+  .mathyml-block-center,
+  math[display="block"] {
+    overflow-x: auto;
+  }
+
   nav.top ol {
     gap: var(--space-3);
   }
@@ -913,6 +975,17 @@ math[display="block"] {
   main .metadata {
     display: grid;
     gap: var(--space-2);
+  }
+
+  .category-directory {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .category-directory ul,
+  .categories {
+    gap: var(--space-2) var(--space-3);
   }
 
   :root {

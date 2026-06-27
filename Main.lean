@@ -67,6 +67,9 @@ def stripSummary : Html → Html
 def ref (pagePath : String) (number : Nat) : Html :=
   {{<sup id=s!"fnref-{number}" class="footnote-ref"><a href=s!"{pagePath}#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
 
+def summaryRef (target : String) (number : Nat) : Html :=
+  {{<sup class="footnote-ref"><a href=s!"{target}/#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
+
 def item (pagePath : String) (number : Nat) (body : Html) : Html :=
   {{<li id=s!"fn-{number}">{{body}} <a class="footnote-backref" href=s!"{pagePath}#fnref-{number}" aria-label=s!"Back to footnote {number} reference">"↩"</a></li>}}
 
@@ -95,6 +98,20 @@ partial def collect (pagePath : String) : Html → M Html
 def run (pagePath : String) (content : Html) : Html :=
   let (content, notes) := (collect pagePath content).run #[]
   if notes.isEmpty then content else content ++ renderSection pagePath notes
+
+/-- Replace summary footnotes with links to the full post's footnotes. -/
+partial def summary (target : String) : Html → StateM Nat Html
+  | .text escape str => return .text escape str
+  | .seq contents => return .seq (← contents.mapM <| summary target)
+  | .tag name attrs contents => do
+    if isFootnote name attrs then
+      let number ← get
+      modify (· + 1)
+      return summaryRef target number
+    else
+      return .tag name attrs (← summary target contents)
+
+def runSummary (target : String) (content : Html) : Html := summary target content |>.run' 1
 
 end Footnotes
 
@@ -135,7 +152,7 @@ def theme : Theme := { Theme.default with
             </div>
            }}
          }}
-        {{summary}}
+        {{Footnotes.runSummary target summary}}
         <a href={{target}} class="read-more">"Read more"</a>
       </li>
     }}]
@@ -168,12 +185,23 @@ def theme : Theme := { Theme.default with
       <h1>{{← param "title"}}</h1>
       {{ metadata }}
       {{HeadingLinks.run pagePath (Footnotes.run pagePath (← param "content"))}}
-      <script src="https://utteranc.es/client.js"
-        repo="berberman/space"
-        issue-term="pathname"
-        theme="github-light"
-        crossorigin="anonymous" async>
-      </script>
+      <section class="comments" aria-label="Comments">
+        <script src="https://giscus.app/client.js"
+                data-repo="berberman/space"
+                data-repo-id="MDEwOlJlcG9zaXRvcnkzMDc2NTQ0Njg="
+                data-category="Announcements"
+                data-category-id="DIC_kwDOElZvRM4C__Y6"
+                data-mapping="title"
+                data-strict="0"
+                data-reactions-enabled="1"
+                data-emit-metadata="0"
+                data-input-position="bottom"
+                data-theme="light"
+                data-lang="en"
+                crossorigin="anonymous"
+                async>
+        </script>
+      </section>
     }}
   primaryTemplate := do
     let postList :=

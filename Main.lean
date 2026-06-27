@@ -103,19 +103,24 @@ def theme : Theme := { Theme.default with
     let postList :=
       match (← param? "posts") with
       | none => Html.empty
-      | some html => {{ <h2> "Posts" </h2> }} ++ html
+      | some html => {{
+          <section class="archive-posts">
+            <div class="archive-section-label">"Posts"</div>
+            {{html}}
+          </section>
+        }}
     let catList :=
       match (← param? (α := Post.Categories) "categories") with
       | none => Html.empty
       | some ⟨cats⟩ => {{
-          <div class="category-directory">
-            <h2> "Categories" </h2>
+          <section class="category-directory archive-categories">
+            <div class="archive-section-label">"Categories"</div>
             <ul>
             {{ cats.map fun (target, cat) =>
               {{<li><a href={{target}}>{{Post.Category.name cat}}</a></li>}}
             }}
             </ul>
-          </div>
+          </section>
         }}
     return {{
       <html>
@@ -123,16 +128,16 @@ def theme : Theme := { Theme.default with
           <meta charset="utf-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1"/>
           <title>{{ (← param (α := String) "title") }}</title>
-          <link rel="stylesheet" href="/static/style.css"/>
-          <link href="/static/prism.css" rel="stylesheet" />
           <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
           <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
           {{← builtinHeader }}
+          <link rel="stylesheet" href="/static/style.css"/>
+          <link href="/static/prism.css" rel="stylesheet" />
         </head>
         <body>
           <header>
             <div class="logo"><a href="/">"Space"</a></div>
-            <nav>{{ ← topNav }}</nav>
+            {{ ← topNav }}
           </header>
           <main>
             {{← param "content" }}

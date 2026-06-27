@@ -17,9 +17,10 @@ categories := [Category.lean]
 ```leanInit empty
 ```
 
-The other day, I saw my friend [CircuitCoder](https://c-3.moe/) ask a [Rocq](https://rocq-prover.org/) question in a group chat:
+One day my friend [CircuitCoder](https://c-3.moe/) asked a [Rocq](https://rocq-prover.org/) question in a group chat:
 
-"How do you prove the following theorem without using the `dependent destruction` tactic? It seems to require the Convoy Pattern, which I tried learning but still don't quite grasp."
+> "How do you prove the following theorem without using the `dependent destruction` tactic?
+  It seems to require the Convoy Pattern, which I tried learning but still don't quite grasp..."
 
 ```coq
 Inductive vector (A : Type) : nat -> Type :=
@@ -46,7 +47,7 @@ inductive Member {α : Type u} (x : α) : List α → Type u where
   | tail {x' xs} : Member x xs → Member x (x' :: xs)
 ```
 
-Unlike {leanInline empty}`List.Mem`, here the membership type is inhabited in the universe {leanInline (universes := "u") empty}`Type u` instead of {leanInline empty}`Prop`.
+Unlike {lean empty}`List.Mem`, here the membership type is inhabited in the universe {lean (universes := "u") empty}`Type u` instead of {lean empty}`Prop`.
 
 ## The Problem
 
@@ -199,7 +200,7 @@ h : x'✝ :: xs✝ = []
 The `lst` in the motive are substituted with the indices of those two constructors for `Member`: `x :: xs✝` and `x'✝ :: xs✝` respectively,
 corresponding to the two match cases.
 
-Now we can feed those false equalities to {leanInline empty}`List.noConfusion`.
+Now we can feed those false equalities to {lean empty}`List.noConfusion`.
 Lean will figure out it's impossible for `.cons` to equal `.nil`, allowing us to prove anything. `<|` is Lean version of `$` to avoid parentheses.
 
 ```lean -keep empty
@@ -236,7 +237,7 @@ def HList.get {α β x} {xs : List α} (mls : @HList α β xs) (m : @Member α x
 ```
 
 Here, we insert `lst = x' :: xs'` into the motive to obtain the equalities `x = x'` in the `head` case and `xs✝ = xs'` in the `tail` case.
-`▸` is the "cast" notation, similar to {leanInline empty}`Eq.subst`.
+`▸` is the "cast" notation, similar to {lean empty}`Eq.subst`.
 Without these equalities, we'd run into the issue that the element we extracted from the correct position cannot be proven to be our desired element.
 
 ### Convoy Pattern, without K
@@ -270,12 +271,12 @@ def HList.get {α β x} {xs : List α} (mls : @HList α β xs) (m : @Member α x
 ```
 
 We no longer insert equality proofs into the motive; instead, we compute the result type dynamically based on the input in the motive.
-This is called _large elimination_ in dependent type theory, as we are eliminating `Member` of {leanInline (universes := "u") empty}`Type u` into another type which resides in {leanInline (universes := "u") empty}`Type (u + 1)`.
+This is called _large elimination_ in dependent type theory, as we are eliminating `Member` of {lean (universes := "u") empty}`Type u` into another type which resides in {lean (universes := "u") empty}`Type (u + 1)`.
 
 * In the `.nil` case, lst is always `.cons` in the two matching cases, so we simply return Unit.
   Meanwhile, since `xs = []` here, the type of this entire casesOn expression evaluates to `β x`!
 * The `.cons` case is a bit more interesting—we pass the function itself into the motive to make the types match in the recursive case.
-  (In fact, the {leanInline empty}`Empty` is not important, and we could use any other type, as `lst` in this case is always `.cons`.)
+  (In fact, the {lean empty}`Empty` is not important, and we could use any other type, as `lst` in this case is always `.cons`.)
 
 # Vec
 
@@ -350,7 +351,7 @@ context:
 α : Type
 n : Nat
 v : Vec α (n + 1)
-⊢ (fun n_ v_ => ∃ v' x, v = Vec.cons x v') 0 Vec.nil
+⊢ ∃ v' x, v = Vec.cons x v'
 ```
 
 So let's try using `motive := fun n_ v_ => n + 1 = n_ → ∃ v' x, v = Vec.cons x v'` as we did before.
@@ -372,8 +373,8 @@ becomes a useless assumption because here `n + 1 = n✝ + 1`.
 We need a different approach.
 Notice that the index `v_` will eventually be replaced by `Vec.cons x_ xs_`.
 If we insert another equality `v ≍ v_`, we can get `v ≍ Vec.cons x_ xs_`.
-We must use {leanInline empty}`HEq` here because `v` has type `Vec α (n + 1)` while `v_` has type `Vec α n_`;
-until we utilize `n + 1 = n_`, their types are different, making standard {leanInline empty}`Eq` invalid.
+We must use {lean empty}`HEq` here because `v` has type `Vec α (n + 1)` while `v_` has type `Vec α n_`;
+until we utilize `n + 1 = n_`, their types are different, making standard {lean empty}`Eq` invalid.
 
 ```lean empty
 example {α : Type} {n : Nat} (v : Vec α (n + 1)) : ∃ (v' : Vec α n) (x : α), v = .cons x v' :=
@@ -411,7 +412,7 @@ example {α : Type} {n : Nat} (v : Vec α (n + 1)) : ∃ (v' : Vec α n) (x : α
     HEq.rfl
 ```
 
-Similar to before, we relied on {leanInline empty}`eq_of_heq`—or effectively Axiom K (as explained in my {page_link Blog.Posts.HEqAndAxiomK}[previous post])—to complete the proof using the convoy pattern.
+Similar to before, we relied on {lean empty}`eq_of_heq`—or effectively Axiom K (as explained in my {page_link Blog.Posts.HEqAndAxiomK}[previous post])—to complete the proof using the convoy pattern.
 
 The version using large elimination looks like this:
 
@@ -429,9 +430,9 @@ example (α : Type) (n : Nat) (v : Vec α (n + 1)) : ∃ v' x, v = Vec.cons x v'
     v
 ```
 
-Here, in the motive of `Vec.rec`, we dynamically compute the {leanInline empty}`Prop` to eliminate into based on the index `m`.
+Here, in the motive of `Vec.rec`, we dynamically compute the {lean empty}`Prop` to eliminate into based on the index `m`.
 
-* If `m = 0`, we need to prove {leanInline empty}`True`, which is proven by {leanInline empty}`True.intro` or simply {leanInline empty}`trivial`.
+* If `m = 0`, we need to prove {lean empty}`True`, which is proven by {lean empty}`True.intro` or simply {lean empty}`trivial`.
 * Otherwise, we need to prove `∃ v' x, v_ = Vec.cons x v'`, where `v_` will be replaced by `Vec.cons x_ xs_`. Setting `v' = xs_` and `x = x_` completes the existential proof.
 
 I think this approach is much cleaner.

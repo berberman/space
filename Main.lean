@@ -248,7 +248,7 @@ def theme : Theme := { Theme.default with
                 data-reactions-enabled="1"
                 data-emit-metadata="0"
                 data-input-position="bottom"
-                data-theme="light"
+                data-theme={{absoluteUrl "/static/giscus.css"}}
                 data-lang="en"
                 crossorigin="anonymous"
                 async>

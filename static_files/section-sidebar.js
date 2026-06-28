@@ -1,4 +1,39 @@
 (function () {
+  function normalizePath(pathname) {
+    if (!pathname) return "/";
+    var normalized = pathname.replace(/\/+$/, "");
+    return normalized || "/";
+  }
+
+  function markCurrentTopNav() {
+    var currentPath = normalizePath(window.location.pathname);
+    var topLinks = Array.prototype.slice.call(document.querySelectorAll("nav.top a[href]"));
+
+    topLinks.forEach(function (link) {
+      var linkPath;
+
+      try {
+        linkPath = normalizePath(new URL(link.href || link.getAttribute("href"), document.baseURI || window.location.href).pathname);
+      } catch {
+        linkPath = "";
+      }
+
+      var descendantPrefix = linkPath.concat("/");
+      var active = linkPath === "/"
+        ? currentPath === "/"
+        : currentPath === linkPath || currentPath.indexOf(descendantPrefix) === 0;
+
+      link.classList.toggle("is-current", active);
+      if (active) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  markCurrentTopNav();
+
   var sidebar = document.querySelector(".section-sidebar");
   if (!sidebar) return;
 
@@ -59,9 +94,11 @@
     });
   });
 
+  var visible = {};
+  var observer;
+
   if ("IntersectionObserver" in window) {
-    var visible = {};
-    var observer = new IntersectionObserver(
+    observer = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) {

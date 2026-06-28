@@ -29,12 +29,13 @@ pre:has(> code[class*="language-"]) {
 }
 
 :not(pre) > code[class*="language-"] {
-  padding: 0.08em 0.28em;
-  border: 1px solid var(--code-border, #d4d2ca);
+  padding: 0.06em 0.24em;
+  border: 1px solid var(--inline-code-border, var(--code-border, #d4d2ca));
   border-radius: var(--radius-sm, 0.2rem);
-  background: var(--code-bg, #f4f4f1);
-  color: var(--code-text, #2d3033);
-  font-size: 0.88em;
+  background: var(--inline-code-bg, var(--code-bg, #f4f4f1));
+  color: var(--inline-code-text, var(--code-text, #2d3033));
+  font-size: 0.86em;
+  line-height: 1.15;
   white-space: normal;
 }
 

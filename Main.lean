@@ -1,6 +1,7 @@
 import VersoBlog
 
 import Blog
+import Blog.Atom
 
 open Verso Genre Blog Site Syntax Doc Output Html
 
@@ -301,6 +302,7 @@ def theme : Theme := { Theme.default with
           <title>{{ (← param (α := String) "title") }}</title>
           <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
           <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+          <link rel="alternate" type="application/atom+xml" title="Space" href="/atom.xml"/>
           {{← builtinHeader }}
           <link rel="stylesheet" href="/static/style.css"/>
           <link href="/static/prism.css" rel="stylesheet" />
@@ -413,7 +415,9 @@ def blog : Site := site Blog.FrontPage /
     Blog.Posts.ArchHaskell
 
 def main (options : List String) := do
-  let x ← blogMain theme (Anchors.addSectionAnchors blog) (options := options)
+  let blogSite := Anchors.addSectionAnchors blog
+  let x ← blogMain theme blogSite (options := options)
+  Blog.Atom.writeFeed blogSite options
   let stdout ← IO.Process.run {
     cmd := "python3",
     args := #["typst/process_math.py", "_site"]

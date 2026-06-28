@@ -242,7 +242,7 @@ Here, we insert `lst = x' :: xs'` into the motive to obtain the equalities `x = 
 `▸` is the "cast" notation, similar to {lean empty}`Eq.subst`.
 Without these equalities, we'd run into the issue that the element we extracted from the correct position cannot be proven to be our desired element.
 
-### Convoy Pattern, without K
+## Convoy Pattern, without K
 
 It's worth mentioning that this trick leverages Lean's proof irrelevance (converting heterogeneous equality to homogeneous equality),
 while CPDT uses a completely different approach. Translated to Lean, it would look something like this:

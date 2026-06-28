@@ -152,7 +152,7 @@ main {
 
 .gsc-comment-box-bottom,
 .gsc-reply-box-bottom {
-  background: var(--color-canvas-subtle);
+  background: var(--color-canvas-default);
   border-top-color: var(--color-border-muted);
 }
 

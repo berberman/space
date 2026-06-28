@@ -3,9 +3,8 @@ import VersoBlog
 
 open Verso.Genre.Blog.Post
 
-namespace Blog
+namespace Blog.Category
 
-namespace Category
 def lean : Category where
   name := "Lean"
   slug := "lean"
@@ -22,6 +21,10 @@ def other : Category where
   name := "Other"
   slug := "other"
 
-def blog : Category where
-  name := "Blog"
-  slug := "blog"
+def «meta» : Category where
+  name := "Meta"
+  slug := "meta"
+
+def nix : Category where
+  name := "Nix"
+  slug := "nix"

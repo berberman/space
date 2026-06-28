@@ -1,4 +1,5 @@
 import VersoBlog
+import Blog.Table
 
 open Verso Genre Blog
 open Template

@@ -8,7 +8,7 @@ open Verso Genre Blog
 %%%
 authors := ["berberman"]
 date := {year := 2026, month := 2, day := 23}
-categories := [Category.lean]
+categories := [Category.lean, Category.typeTheory]
 %%%
 
 ```leanInit empty

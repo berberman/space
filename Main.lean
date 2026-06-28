@@ -1,13 +1,8 @@
 import VersoBlog
 
 import Blog
-import Blog.Atom
-import Blog.Html
-import Blog.SEO
-import Blog.SiteConfig
 
-open Verso Genre Blog Site Syntax Doc Output Html
-open Blog.Html Blog.SiteConfig
+open Verso Genre Blog Site Syntax Doc Output Html SiteConfig
 
 def Verso.Genre.Blog.Date.toReadable (date: Date) : String :=
   let m := match date.month with

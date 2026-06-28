@@ -496,6 +496,18 @@ footer a {
   text-decoration: none;
 }
 
+footer .feed-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: var(--space-3);
+}
+
+footer .feed-link img {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .frontpage {
   max-width: var(--content-width);
   margin: 0 auto;

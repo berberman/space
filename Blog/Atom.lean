@@ -93,6 +93,8 @@ def feedXml (entries : List Entry) : String :=
   s!"  <link href=\"{xmlEscape siteUrl}\"/>\n" ++
   s!"  <link rel=\"self\" href=\"{xmlEscape feedUrl}\"/>\n" ++
   s!"  <id>{xmlEscape siteUrl}</id>\n" ++
+  s!"  <icon>{xmlEscape <| absoluteUrl feedIconPath}</icon>\n" ++
+  s!"  <logo>{xmlEscape <| absoluteUrl feedIconPath}</logo>\n" ++
   s!"  <updated>{feedUpdated entries}</updated>\n" ++
   s!"  <author><name>{xmlEscape siteAuthor}</name></author>\n" ++
   String.join (entries.map entryXml) ++

@@ -13,6 +13,7 @@
           beautifulsoup4
         ]
       ))
+      biome
     ]);
   runScript = "zsh";
 }).env

@@ -297,7 +297,7 @@ def theme : Theme := { Theme.default with
           <title>{{ title }}</title>
           {{ seoTags }}
           <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
-          <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+          <link rel="icon" type="image/x-icon" href={{faviconPath}}/>
           <link rel="alternate" type="application/atom+xml" title={{siteTitle}} href={{absoluteUrl atomFeedPath}}/>
           {{← builtinHeader }}
           <link rel="stylesheet" href="/static/style.css"/>
@@ -316,6 +316,7 @@ def theme : Theme := { Theme.default with
           <footer>
              "© 2020-2026 ❤"
             <a href="https://github.com/berberman">"berberman"</a>
+            <a class="feed-link" href={{atomFeedPath}} aria-label="Atom feed"><img src={{feedIconPath}} alt="" aria-hidden="true"/>"Atom"</a>
           </footer>
           <script src="/static/prism.js"></script>
           <script src="/static/section-sidebar.js"></script>

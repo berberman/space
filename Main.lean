@@ -2,8 +2,12 @@ import VersoBlog
 
 import Blog
 import Blog.Atom
+import Blog.Html
+import Blog.SEO
+import Blog.SiteConfig
 
 open Verso Genre Blog Site Syntax Doc Output Html
+open Blog.Html Blog.SiteConfig
 
 def Verso.Genre.Blog.Date.toReadable (date: Date) : String :=
   let m := match date.month with
@@ -25,11 +29,6 @@ def Verso.Genre.Blog.Date.toReadable (date: Date) : String :=
 open Output Html Template Theme
 
 namespace HeadingLinks
-
-/-- Find the value of an HTML attribute. -/
-def attr? (name : String) (attrs : Array (String × String)) : Option String := do
-  let attr ← attrs.find? (·.1 == name)
-  return attr.2
 
 /-- Add a quiet `#` permalink to every heading that already has an `id`. -/
 partial def run (pagePath : String) : Html → Html
@@ -55,7 +54,7 @@ abbrev Note := Html
 abbrev M := StateM (Array Note)
 
 def isFootnote (name : String) (attrs : Array (String × String)) : Bool :=
-  name == "details" && HeadingLinks.attr? "class" attrs == some "footnote"
+  name == "details" && attr? "class" attrs == some "footnote"
 
 /-- Remove Verso's inline footnote summary from the collected note body. -/
 def stripSummary : Html → Html
@@ -132,17 +131,7 @@ def headingLevel? : String → Option Nat
   | _ => none
 
 def isHeadingLink (attrs : Array (String × String)) : Bool :=
-  HeadingLinks.attr? "class" attrs == some "heading-link"
-
-def normalizeSpaces (text : String) : String :=
-  let (_, out) := text.foldl (fun (pendingSpace, out) char =>
-    if char.isWhitespace then
-      (true, out)
-    else if pendingSpace && !out.isEmpty then
-      (false, out.push ' ' |>.push char)
-    else
-      (false, out.push char)) (false, "")
-  out
+  attr? "class" attrs == some "heading-link"
 
 partial def labelText : Html → String
   | .text _ str => str
@@ -155,7 +144,7 @@ partial def items : Html → Array Item
   | .text _ _ => #[]
   | .seq contents => contents.foldl (fun out html => out ++ items html) #[]
   | .tag name attrs contents =>
-    match headingLevel? name, HeadingLinks.attr? "id" attrs with
+    match headingLevel? name, attr? "id" attrs with
     | some level, some id =>
       let label := normalizeSpaces (labelText contents)
       if label.isEmpty then #[] else #[{ level, id, label }]
@@ -224,7 +213,7 @@ def theme : Theme := { Theme.default with
       if let some p := (← param? "path") then
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
-    let pagePath := "/" ++ "/".intercalate (← currentPath).toList ++ "/"
+    let pagePath := routePath (← currentPath).toList
     let metadata := match (← param? "metadata") with
          | none => Html.empty
          | some md => {{
@@ -294,15 +283,22 @@ def theme : Theme := { Theme.default with
             </ul>
           </section>
         }}
+    let title ← param (α := String) "title"
+    let content ← param (α := Html) "content"
+    let description := Blog.SEO.descriptionFromHtml content
+    let canonical := canonicalUrl (← currentPath)
+    let metadata? ← param? (α := Post.PartMetadata) "metadata"
+    let seoTags := Blog.SEO.metaTags title description canonical metadata?
     return {{
       <html>
         <head>
           <meta charset="utf-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1"/>
-          <title>{{ (← param (α := String) "title") }}</title>
+          <title>{{ title }}</title>
+          {{ seoTags }}
           <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
           <link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
-          <link rel="alternate" type="application/atom+xml" title="Space" href="/atom.xml"/>
+          <link rel="alternate" type="application/atom+xml" title={{siteTitle}} href={{absoluteUrl atomFeedPath}}/>
           {{← builtinHeader }}
           <link rel="stylesheet" href="/static/style.css"/>
           <link href="/static/prism.css" rel="stylesheet" />
@@ -313,7 +309,7 @@ def theme : Theme := { Theme.default with
             {{ ← topNav }}
           </header>
           <main>
-            {{← param "content" }}
+            {{ content }}
             {{ catList }}
             {{ postList }}
           </main>
@@ -418,6 +414,7 @@ def main (options : List String) := do
   let blogSite := Anchors.addSectionAnchors blog
   let x ← blogMain theme blogSite (options := options)
   Blog.Atom.writeFeed blogSite options
+  Blog.SEO.writeCrawlerFiles blogSite options
   let stdout ← IO.Process.run {
     cmd := "python3",
     args := #["typst/process_math.py", "_site"]

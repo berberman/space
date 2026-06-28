@@ -1,32 +1,10 @@
-import VersoBlog
+import Blog.Html
+import Blog.SiteConfig
 
 open Verso Genre Blog Site Doc
+open Blog.Html Blog.SiteConfig
 
 namespace Blog.Atom
-
-def title : String := "Space"
-
-def author : String := "berberman"
-
-def baseUrl : String := "https://space.torus.icu"
-
-def feedPath : String := "/atom.xml"
-
-def updated (date : Date) : String := s!"{date.toIso8601String}T00:00:00Z"
-
-def absoluteUrl (path : String) : String := s!"{baseUrl}{path}"
-
-def xmlEscape (text : String) : String := Id.run do
-  let mut out := ""
-  for char in text.toList do
-    out := out ++ match char with
-      | '&' => "&amp;"
-      | '<' => "&lt;"
-      | '>' => "&gt;"
-      | '"' => "&quot;"
-      | '\'' => "&apos;"
-      | c => c.toString
-  out
 
 abbrev M := ReaderT Config IO
 
@@ -108,15 +86,15 @@ def feedUpdated : List Entry → String
 
 def feedXml (entries : List Entry) : String :=
   let siteUrl := absoluteUrl "/"
-  let feedUrl := absoluteUrl feedPath
+  let feedUrl := absoluteUrl atomFeedPath
   "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" ++
   "<feed xmlns=\"http://www.w3.org/2005/Atom\">\n" ++
-  s!"  <title>{xmlEscape title}</title>\n" ++
+  s!"  <title>{xmlEscape siteTitle}</title>\n" ++
   s!"  <link href=\"{xmlEscape siteUrl}\"/>\n" ++
   s!"  <link rel=\"self\" href=\"{xmlEscape feedUrl}\"/>\n" ++
   s!"  <id>{xmlEscape siteUrl}</id>\n" ++
   s!"  <updated>{feedUpdated entries}</updated>\n" ++
-  s!"  <author><name>{xmlEscape author}</name></author>\n" ++
+  s!"  <author><name>{xmlEscape siteAuthor}</name></author>\n" ++
   String.join (entries.map entryXml) ++
   "</feed>\n"
 
@@ -130,7 +108,7 @@ def postEntry (pathToBlog : String) (post : BlogPost) : M (Option Entry) := do
   return some {
     title := post.contents.titleString,
     url := absoluteUrl path,
-    updated := updated metadata.date,
+    updated := atomTimestamp metadata.date,
     authors := metadata.authors,
     summary := postSummary post
   }
@@ -151,16 +129,8 @@ def collectSite : Site → M (List Entry)
     return nested.flatten
   | .blog _ _ posts => posts.toList.filterMapM (postEntry "")
 
-def configFromOptions (options : List String) : IO Config := go {} options
-  where
-    go (cfg : Config) : List String → IO Config
-      | "--output" :: dir :: more => go { cfg with destination := dir } more
-      | "--drafts" :: more => go { cfg with showDrafts := true } more
-      | other :: _ => throw <| IO.userError s!"Unknown option {other}"
-      | [] => pure cfg
-
 def writeFeed (site : Site) (options : List String) : IO Unit := do
-  let cfg ← configFromOptions options
+  let cfg ← parseOptions options
   let entries ← collectSite site |>.run cfg
   IO.FS.writeFile (cfg.destination.join "atom.xml") (feedXml entries)
 

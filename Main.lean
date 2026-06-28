@@ -115,6 +115,68 @@ def runSummary (target : String) (content : Html) : Html := summary target conte
 
 end Footnotes
 
+namespace SectionSidebar
+
+structure Item where
+  level : Nat
+  id : String
+  label : String
+
+def headingLevel? : String → Option Nat
+  | "h2" => some 2
+  | "h3" => some 3
+  | "h4" => some 4
+  | "h5" => some 5
+  | "h6" => some 6
+  | _ => none
+
+def isHeadingLink (attrs : Array (String × String)) : Bool :=
+  HeadingLinks.attr? "class" attrs == some "heading-link"
+
+def normalizeSpaces (text : String) : String :=
+  let (_, out) := text.foldl (fun (pendingSpace, out) char =>
+    if char.isWhitespace then
+      (true, out)
+    else if pendingSpace && !out.isEmpty then
+      (false, out.push ' ' |>.push char)
+    else
+      (false, out.push char)) (false, "")
+  out
+
+partial def labelText : Html → String
+  | .text _ str => str
+  | .seq contents => contents.foldl (fun out html => out ++ labelText html) ""
+  | .tag "a" attrs contents =>
+    if isHeadingLink attrs then "" else labelText contents
+  | .tag _ _ contents => labelText contents
+
+partial def items : Html → Array Item
+  | .text _ _ => #[]
+  | .seq contents => contents.foldl (fun out html => out ++ items html) #[]
+  | .tag name attrs contents =>
+    match headingLevel? name, HeadingLinks.attr? "id" attrs with
+    | some level, some id =>
+      let label := normalizeSpaces (labelText contents)
+      if label.isEmpty then #[] else #[{ level, id, label }]
+    | _, _ => items contents
+
+def itemHtml (pagePath : String) (item : Item) : Html :=
+  {{<li class=s!"section-sidebar__item section-sidebar__item--h{item.level}"><a href=s!"{pagePath}#{item.id}" data-section-id={{item.id}}>{{item.label}}</a></li>}}
+
+def render (pagePath : String) (content : Html) : Html :=
+  let found := items content
+  if found.size < 2 then
+    Html.empty
+  else
+    {{<aside class="section-sidebar" aria-label="On this page">
+        <div class="section-sidebar__title">"On this page"</div>
+        <nav>
+          <ol>{{found.map <| itemHtml pagePath}}</ol>
+        </nav>
+      </aside>}}
+
+end SectionSidebar
+
 def theme : Theme := { Theme.default with
   archiveEntryTemplate : Template := do
     let post : BlogPost ← param "post"
@@ -181,10 +243,15 @@ def theme : Theme := { Theme.default with
             }}
           </div>
          }}
+    let mut content : Html ← param "content"
+    content := Footnotes.run pagePath content
+    content :=  HeadingLinks.run pagePath content
+    let sidebar := SectionSidebar.render pagePath content
     pure {{
       <h1>{{← param "title"}}</h1>
       {{ metadata }}
-      {{HeadingLinks.run pagePath (Footnotes.run pagePath (← param "content"))}}
+      {{ sidebar }}
+      {{ content }}
       <section class="comments" aria-label="Comments">
         <script src="https://giscus.app/client.js"
                 data-repo="berberman/space"
@@ -253,6 +320,7 @@ def theme : Theme := { Theme.default with
             <a href="https://github.com/berberman">"berberman"</a>
           </footer>
           <script src="/static/prism.js"></script>
+          <script src="/static/section-sidebar.js"></script>
         </body>
       </html>
     }}

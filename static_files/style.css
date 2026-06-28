@@ -261,6 +261,81 @@ h6[id]:focus-within > .heading-link {
   color: var(--page-accent-strong);
 }
 
+.section-sidebar {
+  display: none;
+}
+
+.section-sidebar__title {
+  margin-bottom: var(--space-2);
+  color: var(--page-subtle);
+  font-family: var(--verso-structure-font-family);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.section-sidebar ol {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section-sidebar li + li {
+  margin-top: 0;
+}
+
+.section-sidebar a {
+  display: block;
+  padding: var(--space-1) 0 var(--space-1) var(--space-3);
+  border-left: 1px solid var(--page-border);
+  color: var(--page-muted);
+  font-family: var(--verso-structure-font-family);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  text-decoration: none;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.section-sidebar a:hover,
+.section-sidebar a:focus-visible {
+  border-left-color: var(--page-border-strong);
+  color: var(--page-accent-strong);
+}
+
+.section-sidebar a.is-current {
+  border-left-color: var(--page-accent);
+  color: var(--page-accent-strong);
+  font-weight: 650;
+}
+
+.section-sidebar__item--h3 a {
+  padding-left: var(--space-4);
+}
+
+.section-sidebar__item--h4 a,
+.section-sidebar__item--h5 a,
+.section-sidebar__item--h6 a {
+  padding-left: var(--space-5);
+  font-size: 0.8rem;
+}
+
+@media (min-width: 90rem) {
+  .section-sidebar {
+    display: block;
+    position: fixed;
+    top: calc(var(--space-7) + var(--space-6));
+    left: calc(50% + (var(--content-width) / 2) + var(--space-6));
+    width: 13rem;
+    max-width: calc(50vw - (var(--content-width) / 2) - var(--space-7));
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+    color: var(--page-muted);
+  }
+}
+
 .footnote-ref {
   font-family: var(--verso-structure-font-family);
   font-size: 0.72em;

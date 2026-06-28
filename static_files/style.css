@@ -502,6 +502,11 @@ th {
 }
 
 footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
   max-width: var(--wide-width);
   margin: 0 auto;
   padding: var(--space-5);
@@ -513,7 +518,6 @@ footer {
 }
 
 footer a {
-  margin-left: var(--space-1);
   font-weight: 600;
   text-decoration: none;
 }
@@ -522,12 +526,13 @@ footer .feed-link {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  margin-left: var(--space-3);
+  line-height: 1;
 }
 
 footer .feed-link img {
   width: 0.85rem;
   height: 0.85rem;
+  flex: none;
 }
 
 .frontpage {
@@ -1223,6 +1228,7 @@ math[display="block"] {
   }
 
   footer {
+    justify-content: flex-start;
     text-align: left;
   }
 }

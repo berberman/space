@@ -49,6 +49,12 @@ partial def blockText : Block Post → String
   | .other _ items => "\n".intercalate (items.toList.map blockText)
   | .code str => str
 
+partial def partText (includeTitle : Bool) (part : Part Post) : String :=
+  let title := if includeTitle then part.titleString else ""
+  let content := "\n\n".intercalate (part.content.toList.map blockText)
+  let subParts := "\n\n".intercalate (part.subParts.toList.map (partText true))
+  "\n\n".intercalate <| [title, content, subParts].filter (!·.isEmpty)
+
 mutual
   partial def partSummary (part : Part Post) : String :=
     let content := "\n\n".intercalate (part.content.toList.map blockText)

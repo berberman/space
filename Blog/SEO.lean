@@ -26,12 +26,6 @@ def skipTag (name : String) (attrs : Array (String × String)) : Bool :=
   ["script", "style", "nav", "aside", "footer", "h1"].contains name ||
     ["metadata", "comments", "section-sidebar", "heading-link", "footnotes"].any (classContains · attrs)
 
-partial def htmlText : Html → String
-  | .text _ str => str
-  | .seq contents => " ".intercalate (contents.toList.map htmlText)
-  | .tag name attrs contents =>
-    if skipTag name attrs then "" else htmlText contents
-
 def truncate (limit : Nat) (text : String) : String :=
   let chars := text.toList
   if chars.length ≤ limit then
@@ -40,7 +34,7 @@ def truncate (limit : Nat) (text : String) : String :=
     String.ofList (chars.take limit) ++ "..."
 
 def descriptionFromHtml (content : Html) : String :=
-  let description := htmlText content |> normalizeSpaces |> truncate 180
+  let description := htmlText " " skipTag content |> normalizeSpaces |> truncate 180
   if description.isEmpty then siteDescription else description
 
 def metaName (name content : String) : Html :=

@@ -103,6 +103,14 @@ header {
   font-family: var(--verso-structure-font-family);
 }
 
+.site-header {
+  transition: border-color 180ms ease;
+}
+
+.site-header.is-scrolled {
+  border-color: color-mix(in srgb, var(--page-border-strong) 72%, var(--page-border));
+}
+
 .logo a {
   color: var(--page-text);
   font-size: 1.05rem;
@@ -420,6 +428,47 @@ h6[id]:focus-within > .heading-link {
   color: var(--page-accent-strong);
 }
 
+.reading-progress {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  z-index: 320;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--page-border);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--page-surface) 94%, transparent);
+  color: var(--page-muted);
+  font-family: var(--verso-structure-font-family);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(var(--space-2));
+  transition: opacity 160ms ease, transform 160ms ease, border-color 120ms ease, color 120ms ease, background-color 120ms ease;
+}
+
+.reading-progress.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.reading-progress:hover,
+.reading-progress:focus-visible {
+  border-color: var(--page-border-strong);
+  background: var(--page-surface);
+  color: var(--page-accent-strong);
+}
+
+.reading-progress__arrow {
+  color: var(--page-subtle);
+  font-size: 0.88rem;
+}
+
 main > h2 {
   max-width: var(--content-width);
   margin-left: auto;
@@ -643,7 +692,8 @@ main .metadata {
 }
 
 .date,
-.authors {
+.authors,
+.reading-stats {
   display: inline;
 }
 
@@ -657,6 +707,10 @@ main .metadata {
 
 .authors .author:not(:last-child)::after {
   content: ", ";
+}
+
+.reading-stats {
+  color: var(--page-subtle);
 }
 
 .categories {
@@ -1218,7 +1272,7 @@ math[display="block"] {
   padding: var(--space-2) 0;
 }
 
-@media screen and (-webkit-min-device-pixel-ratio: 0) and (min-resolution: 0.001dpcm) {
+@supports (-webkit-appearance: none) {
   .mathyml-align-right {
     text-align: -webkit-right;
   }
@@ -1230,10 +1284,14 @@ math[display="block"] {
 
 @media (max-width: 760px) {
   header {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .site-header {
+    width: min(100% - var(--space-4), var(--wide-width));
   }
 
   main {
@@ -1274,6 +1332,12 @@ math[display="block"] {
     gap: var(--space-3);
   }
 
+  .reading-progress {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    padding: var(--space-2);
+  }
+
   main .metadata {
     display: grid;
     gap: var(--space-2);
@@ -1297,5 +1361,18 @@ math[display="block"] {
   footer {
     justify-content: flex-start;
     text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .site-header,
+  .reading-progress,
+  nav.top a,
+  .section-sidebar a {
+    transition: none;
   }
 }

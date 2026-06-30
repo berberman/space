@@ -23,6 +23,10 @@ structure Config where
   alignment : Option Alignment := none
 deriving ToJson, FromJson
 
+structure CellRange where
+  startPos : String.Pos.Raw
+  stopPos : String.Pos.Raw
+
 def validateRows (ref : Syntax) (rows : Array (Array α)) : DocElabM Nat := do
   if rows.isEmpty then
     throwErrorAt ref "Expected at least one row"
@@ -33,19 +37,39 @@ def validateRows (ref : Syntax) (rows : Array (Array α)) : DocElabM Nat := do
     throwErrorAt ref s!"Expected all rows to have same number of columns, but got {rows.map (·.size)}"
   pure columns
 
-/- Elaborate verso blocks into syntax and put them into our block extension. -/
-def mkTable (cfg : Config) (columns : Nat) (cells : Array (TSyntaxArray `block)) : DocElabM Term := do
-  let blocks : Array (Syntax.TSepArray `term ",") ← cells.mapM (·.mapM elabBlock)
+/- Put elaborated table cells into our block extension. -/
+def mkTable (cfg : Config) (columns : Nat) (cells : Array Term) : DocElabM Term := do
   let data := toJson (columns, cfg)
-  ``(Block.other (Blog.BlockExt.component `Blog.Table.blogTable $(quote data)) #[Block.ul #[$[Verso.Doc.ListItem.mk #[$blocks,*]],*]])
+  ``(Block.other (Blog.BlockExt.component `Blog.Table.blogTable $(quote data)) #[Block.ul #[$[Verso.Doc.ListItem.mk #[$cells]],*]])
 
-/- Elaborate a cell to verso blocks. -/
-def elabCell (ref : Syntax) (input : String) : DocElabM (TSyntaxArray `block) := do
-  let raw := Syntax.mkStrLit input
-  let blocks ← Concrete.stringToBlocks ⟨raw⟩
-  if blocks.isEmpty then
+def parseRangeWith (p : ParserFn) (ref : Syntax) (startPos stopPos : String.Pos.Raw) : DocElabM Syntax := do
+  let fileMap ← getFileMap
+  if h : stopPos ≤ fileMap.source.rawEndPos then
+    let ictx := mkInputContext fileMap.source (← getFileName) (endPos := stopPos) (endPos_valid := h)
+    let env ← getEnv
+    let state := { Lean.Parser.mkParserState fileMap.source with pos := startPos }
+    let state := p.run ictx { env, options := ← getOptions } (Lean.Parser.getTokenTable env) state
+    if let some err := state.errorMsg then
+      throwErrorAt ref err.toString
+    if state.recoveredErrors.size > 0 then
+      throwErrorAt ref "Failed to parse table cell inline content"
+    if ictx.atEnd state.pos then
+      return state.stxStack.back
+    else
+      throwErrorAt ref "Unparsed input: `{state.pos.extract fileMap.source stopPos}`"
+  else
+    throwErrorAt ref "Internal error: table source range extends past end of file"
+
+def sourceStopFromString (startPos : String.Pos.Raw) (s : String) : String.Pos.Raw :=
+  ⟨startPos.byteIdx + s.utf8ByteSize⟩
+
+/- Elaborate a cell as inline verso content wrapped in one paragraph. -/
+def elabCell (ref : Syntax) (cell : CellRange) : DocElabM Term := do
+  let inlines := (← parseRangeWith (textLine (allowNewlines := false)) ref cell.startPos cell.stopPos).getArgs
+  if inlines.isEmpty then
     throwErrorAt ref "Expected nonempty table cell content"
-  return blocks.map .mk
+  let genre := (← readThe DocElabContext).genreSyntax
+  ``(Block.para (genre := $(⟨genre⟩)) #[$[$(← inlines.mapM fun inline => elabInline ⟨inline⟩)],*])
 
 def trim (s : String) : String :=
   s.trimAscii.toString
@@ -56,60 +80,58 @@ def cell : ParserFn :=
 /- Parse |...|...|...| returning the content in `Syntax.atom`. -/
 def row : ParserFn :=
   nodeFn `Blog.Table.row <|
+    takeWhileFn (· == ' ') >>
     ignoreFn (chFn '|') >>
     many1Fn (cell >> ignoreFn (chFn '|'))
 
 /- Parse rows separated by newlines. -/
 def rows : ParserFn :=
   nodeFn `Blog.Table.rows <|
-    row >> manyFn (ignoreFn (chFn '\n') >> row)
+    row >> manyFn (ignoreFn (atomicFn (chFn '\n' >> lookaheadFn (takeWhileFn (· == ' ') >> chFn '|'))) >> row) >>
+    takeWhileFn (·.isWhitespace)
 
-/- Extract trimmed text from `.atom` node. -/
-def extractCellText (ref : Syntax) : Syntax → DocElabM String
-  | .atom _ cellText =>
-    let cellText := trim cellText
-    if cellText == "" then
+/- Extract a table cell's source range from the atom produced by `cell`. -/
+def extractCell (ref : Syntax) : Syntax → DocElabM CellRange
+  | .atom info cellText =>
+    if trim cellText == "" then
       throwErrorAt ref "Table cells must be nonempty"
-    else
-      pure cellText
+    else do
+      let some startPos := info.getPos?
+        | throwErrorAt ref "Internal error: table cell has no source position"
+      let some stopPos := info.getTailPos?
+        | throwErrorAt ref "Internal error: table cell has no end position"
+      pure { startPos, stopPos }
   | stx => throwErrorAt stx "Expected table cell"
 
-/- Extract texts in a row (node created by `manyFn`). -/
-partial def extractCells (ref : Syntax) : Syntax → DocElabM (Array String)
-  | .node _ `null args => do
-    let nested ← args.mapM <| extractCells ref
-    pure nested.flatten
-  | atom@(.atom ..) => do
-    let cell ← extractCellText ref atom
-    pure #[cell]
-  | stx => throwErrorAt stx "Expected table cell"
-
-/- Extract texts in a row (node created by `row`). -/
-def extractRow (ref : Syntax) : Syntax → DocElabM (Array String)
-  | .node _ `Blog.Table.row cells => do
-    let nested ← cells.mapM <| extractCells ref
-    pure nested.flatten
+/- Extract cells from the row node produced by `row`. -/
+def extractRow (ref : Syntax) : Syntax → DocElabM (Array CellRange)
+  | .node _ `Blog.Table.row #[.node _ `null cells] => cells.mapM <| extractCell ref
   | stx => throwErrorAt stx "Expected table row"
 
-partial def extractRows (ref : Syntax) : Syntax → DocElabM (Array (Array String))
-  | .node _ `Blog.Table.rows rows => do
-    let nested ← rows.mapM <| extractRows ref
-    pure nested.flatten
-  | .node _ `Blog.Table.row cells => do
-    let row ← extractRow ref <| .node SourceInfo.none `Blog.Table.row cells
-    pure #[row]
-  | .node _ `null rows => do
-    let nested ← rows.mapM <| extractRows ref
-    pure nested.flatten
+partial def extractRows (ref : Syntax) : Syntax → DocElabM (Array (Array CellRange))
+  | .node _ `Blog.Table.rows #[first, rest] => do
+    let first ← extractRow ref first
+    let rest ← extractRows ref rest
+    pure <| #[first] ++ rest
+  | row@(.node _ `Blog.Table.row _) => return #[← extractRow ref row]
+  | .node _ `null rows => rows.mapM <| extractRow ref
   | stx => throwErrorAt stx "Expected table row"
 
 /- Elaborate a table to nested verso blocks. -/
-def elabRows (ref : Syntax) (input : String) : DocElabM (Array (Array (TSyntaxArray `block))) := do
-  let input := trim input
+def elabRows (str : StrLit) : DocElabM (Array (Array Term)) := do
+  let ref := str.raw
+  let input := trim str.getString
   if input == "" then
     throwErrorAt ref "Expected at least one table row"
-  let rowTexts ← extractRows ref (← rows.parseString input)
-  rowTexts.mapM fun cells => cells.mapM <| elabCell ref
+  let some startPos := ref.getPos?
+    | throwErrorAt ref "Expected original table source positions"
+  let some stopPos := ref.getTailPos?
+    | throwErrorAt ref "Expected original table source end position"
+  if h : stopPos ≤ (← getFileMap).source.rawEndPos then
+    let rowTexts ← extractRows ref (← parseRangeWith rows ref startPos stopPos)
+    rowTexts.mapM fun cells => cells.mapM <| elabCell ref
+  else
+    throwErrorAt ref "Internal error: table source range extends past end of file"
 
 section
 
@@ -182,7 +204,7 @@ namespace Verso.Genre.Blog
 @[code_block]
 def table : CodeBlockExpanderOf _root_.Blog.Table.Config
   | cfg, str => do
-    let rows ← _root_.Blog.Table.elabRows str.raw str.getString
+    let rows ← _root_.Blog.Table.elabRows str
     let columns ← _root_.Blog.Table.validateRows str.raw rows
     _root_.Blog.Table.mkTable cfg columns rows.flatten
 

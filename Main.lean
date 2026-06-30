@@ -162,6 +162,48 @@ def render (pagePath : String) (content : Html) : Html :=
 
 end SectionSidebar
 
+namespace ReadingStats
+
+def wordsPerMinute : Nat := 225
+
+structure Stats where
+  words : Nat
+  minutes : Nat
+
+def countWords (text : String) : Nat :=
+  let (_, words) := text.foldl (fun (inWord, words) char =>
+    if char.isWhitespace then
+      (false, words)
+    else if inWord then
+      (true, words)
+    else
+      (true, words + 1)) (false, 0)
+  words
+
+def minutesFor (words : Nat) : Nat :=
+  if words == 0 then 0 else max 1 ((words + wordsPerMinute - 1) / wordsPerMinute)
+
+def fromText (text : String) : Stats :=
+  let words := countWords (normalizeSpaces text)
+  { words, minutes := minutesFor words }
+
+def fromPost (post : BlogPost) : Stats :=
+  fromText <| Atom.partText false post.contents
+
+def fromHtml (html : Html) : Stats :=
+  fromText <| htmlText "\n" (fun _ attrs => classContains "footnote" attrs) html
+
+def minuteLabel (minutes : Nat) : String :=
+  if minutes == 1 then "1 min read" else s!"{minutes} min read"
+
+def render (stats : Stats) : Html :=
+  if stats.words == 0 then
+    Html.empty
+  else
+    {{<div class="reading-stats">{{minuteLabel stats.minutes}}</div>}}
+
+end ReadingStats
+
 def theme : Theme := { Theme.default with
   archiveEntryTemplate : Template := do
     let post : BlogPost ← param "post"
@@ -173,6 +215,7 @@ def theme : Theme := { Theme.default with
       if let some p := (← param? "path") then
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
+    let stats := ReadingStats.fromPost post
 
     return #[{{
       <li>
@@ -196,9 +239,10 @@ def theme : Theme := { Theme.default with
                   </ul>
                 }}
               }}
+              {{ReadingStats.render stats}}
             </div>
            }}
-         }}
+          }}
         {{Footnotes.runSummary target summary}}
         <a href={{target}} class="read-more">"Read more"</a>
       </li>
@@ -209,6 +253,8 @@ def theme : Theme := { Theme.default with
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
     let pagePath := routePath (← currentPath).toList
+    let rawContent : Html ← param "content"
+    let stats := ReadingStats.fromHtml rawContent
     let metadata := match (← param? "metadata") with
          | none => Html.empty
          | some md => {{
@@ -226,9 +272,10 @@ def theme : Theme := { Theme.default with
                 </ul>
               }}
             }}
+            {{ReadingStats.render stats}}
           </div>
          }}
-    let mut content : Html ← param "content"
+    let mut content := rawContent
     content := Footnotes.run pagePath content
     content :=  HeadingLinks.run pagePath content
     let sidebar := SectionSidebar.render pagePath content
@@ -299,7 +346,7 @@ def theme : Theme := { Theme.default with
           <link href="/static/prism.css" rel="stylesheet" />
         </head>
         <body>
-          <header>
+          <header class="site-header">
             <div class="logo"><a href="/">"Space"</a></div>
             {{ ← topNav }}
           </header>
@@ -315,6 +362,7 @@ def theme : Theme := { Theme.default with
           </footer>
           <script src="/static/prism.js"></script>
           <script src="/static/section-sidebar.js"></script>
+          <script src="/static/reading-ui.js"></script>
         </body>
       </html>
     }}
@@ -399,6 +447,7 @@ def blog : Site := site Blog.FrontPage /
   static "static" ← "static_files"
   "about" Blog.About
   "blog" Blog.Posts with
+    Blog.Posts.MoreVerso
     Blog.Posts.ConvoyPatterns
     Blog.Posts.HEqAndAxiomK
     Blog.Posts.HelloVerso

@@ -1,6 +1,6 @@
 import VersoBlog
 import Blog.Categories
-import Blog.Meta
+import Blog.Site.Extensions
 
 import Blog.Posts.HEqAndAxiomK
 

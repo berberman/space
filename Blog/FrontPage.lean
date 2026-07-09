@@ -1,5 +1,4 @@
 import VersoBlog
-import Blog.Meta
 
 open Verso Genre Blog
 

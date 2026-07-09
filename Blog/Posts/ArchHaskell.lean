@@ -1,6 +1,6 @@
 import VersoBlog
 import Blog.Categories
-import Blog.Meta
+import Blog.Site.Extensions
 open Verso Genre Blog
 
 #doc (Post) "Setting up a Haskell development environment on Arch Linux" =>

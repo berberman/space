@@ -3,7 +3,7 @@ import Verso.Doc.ArgParse
 import Verso.Doc.Elab
 import Verso.Parser
 
-open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser
+open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser Template
 
 namespace Blog.Table
 
@@ -37,7 +37,6 @@ def validateRows (ref : Syntax) (rows : Array (Array α)) : DocElabM Nat := do
     throwErrorAt ref s!"Expected all rows to have same number of columns, but got {rows.map (·.size)}"
   pure columns
 
-/- Put elaborated table cells into our block extension. -/
 def mkTable (cfg : Config) (columns : Nat) (cells : Array Term) : DocElabM Term := do
   let data := toJson (columns, cfg)
   ``(Block.other (Blog.BlockExt.component `Blog.Table.blogTable $(quote data)) #[Block.ul #[$[Verso.Doc.ListItem.mk #[$cells]],*]])
@@ -63,7 +62,6 @@ def parseRangeWith (p : ParserFn) (ref : Syntax) (startPos stopPos : String.Pos.
 def sourceStopFromString (startPos : String.Pos.Raw) (s : String) : String.Pos.Raw :=
   ⟨startPos.byteIdx + s.utf8ByteSize⟩
 
-/- Elaborate a cell as inline verso content wrapped in one paragraph. -/
 def elabCell (ref : Syntax) (cell : CellRange) : DocElabM Term := do
   let inlines := (← parseRangeWith (textLine (allowNewlines := false)) ref cell.startPos cell.stopPos).getArgs
   if inlines.isEmpty then
@@ -77,20 +75,17 @@ def trim (s : String) : String :=
 def cell : ParserFn :=
   asStringFn <| takeWhileFn fun c => c != '|' && c != '\n'
 
-/- Parse |...|...|...| returning the content in `Syntax.atom`. -/
 def row : ParserFn :=
   nodeFn `Blog.Table.row <|
     takeWhileFn (· == ' ') >>
     ignoreFn (chFn '|') >>
     many1Fn (cell >> ignoreFn (chFn '|'))
 
-/- Parse rows separated by newlines. -/
 def rows : ParserFn :=
   nodeFn `Blog.Table.rows <|
     row >> manyFn (ignoreFn (atomicFn (chFn '\n' >> lookaheadFn (takeWhileFn (· == ' ') >> chFn '|'))) >> row) >>
     takeWhileFn (·.isWhitespace)
 
-/- Extract a table cell's source range from the atom produced by `cell`. -/
 def extractCell (ref : Syntax) : Syntax → DocElabM CellRange
   | .atom info cellText =>
     if trim cellText == "" then
@@ -103,7 +98,6 @@ def extractCell (ref : Syntax) : Syntax → DocElabM CellRange
       pure { startPos, stopPos }
   | stx => throwErrorAt stx "Expected table cell"
 
-/- Extract cells from the row node produced by `row`. -/
 def extractRow (ref : Syntax) : Syntax → DocElabM (Array CellRange)
   | .node _ `Blog.Table.row #[.node _ `null cells] => cells.mapM <| extractCell ref
   | stx => throwErrorAt stx "Expected table row"
@@ -117,7 +111,6 @@ partial def extractRows (ref : Syntax) : Syntax → DocElabM (Array (Array CellR
   | .node _ `null rows => rows.mapM <| extractRow ref
   | stx => throwErrorAt stx "Expected table row"
 
-/- Elaborate a table to nested verso blocks. -/
 def elabRows (str : StrLit) : DocElabM (Array (Array Term)) := do
   let ref := str.raw
   let input := trim str.getString
@@ -127,7 +120,7 @@ def elabRows (str : StrLit) : DocElabM (Array (Array Term)) := do
     | throwErrorAt ref "Expected original table source positions"
   let some stopPos := ref.getTailPos?
     | throwErrorAt ref "Expected original table source end position"
-  if h : stopPos ≤ (← getFileMap).source.rawEndPos then
+  if _ : stopPos ≤ (← getFileMap).source.rawEndPos then
     let rowTexts ← extractRows ref (← parseRangeWith rows ref startPos stopPos)
     rowTexts.mapM fun cells => cells.mapM <| elabCell ref
   else
@@ -209,3 +202,44 @@ def table : CodeBlockExpanderOf _root_.Blog.Table.Config
     _root_.Blog.Table.mkTable cfg columns rows.flatten
 
 end Verso.Genre.Blog
+
+open Verso Genre Blog
+open Template
+open Verso Doc Elab ArgParse
+open Lean
+open Verso Output Html
+open Elab Command
+open Lean.Doc.Syntax
+
+@[role]
+def typst : RoleExpanderOf Unit
+  | (), contents => do
+    let inl ← match contents with
+      | #[inl] => pure inl
+      | _ => throwError "Expected precisely one inline math, got {contents}"
+    let html ← match inl with
+      | `(inline| \math code($s)) => pure {{ <span class = "typst-inline"> {{Html.text false s.getString }} </span>}}
+      | `(inline| \displaymath code($s)) => pure {{ <div class="typst-block"> {{Html.text false s.getString }} </div>}}
+      | _ => throwErrorAt inl "Expected math code or displaymath code"
+    `(_root_.Verso.Doc.Inline.other (Blog.InlineExt.blob $(quote html)) #[])
+
+def mkLangCodeBlock (lang : String) (code : String) : Html :=
+  {{<pre><code class=s!"language-{lang}">{{code}}</code></pre>}}
+
+syntax "lang_code_block" ident : command
+
+elab_rules : command
+  | `(lang_code_block $lang) => do
+    let cmd ← `(command|
+                @[code_block]
+                def $lang : CodeBlockExpanderOf Unit
+                  | (), str => do
+                    `(_root_.Verso.Doc.Block.other (Blog.BlockExt.blob (mkLangCodeBlock $(quote lang.getId.toString) $$str)) #[]))
+    elabCommand cmd
+
+lang_code_block python
+lang_code_block haskell
+lang_code_block kotlin
+lang_code_block javascript
+lang_code_block bash
+lang_code_block coq

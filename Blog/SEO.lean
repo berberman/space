@@ -1,8 +1,6 @@
-import Blog.Html
-import Blog.SiteConfig
+import Blog.Site.Basic
 
-open Verso Genre Blog Site Doc Output Html
-open Blog.Html Blog.SiteConfig
+open Verso Genre Blog Site Doc Output Html SiteConfig
 
 namespace Blog.SEO
 

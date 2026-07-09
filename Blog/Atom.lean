@@ -1,8 +1,6 @@
-import Blog.Html
-import Blog.SiteConfig
+import Blog.Site.Basic
 
-open Verso Genre Blog Site Doc
-open Blog.Html Blog.SiteConfig
+open Verso Genre Blog Site Doc Html SiteConfig
 
 namespace Blog.Atom
 
@@ -16,61 +14,6 @@ structure Entry where
   updated : String
   authors : List String
   summary : String
-
-partial def inlineText : Inline Post → String
-  | .text str => str
-  | .code str => str
-  | .emph content
-  | .bold content
-  | .link content ..
-  | .concat content
-  | .footnote _ content
-  | .other _ content => textList content.toList
-  | .math _ str => str
-  | .linebreak _ => "\n"
-  | .image alt _ => alt
-where
-  textList (content : List (Inline Post)) : String :=
-    "".intercalate (content.map inlineText)
-
-partial def blockText : Block Post → String
-  | .para content => "".intercalate (content.toList.map inlineText)
-  | .ul items
-  | .ol _ items =>
-    "\n".intercalate <| items.toList.map fun item =>
-      "\n".intercalate (item.contents.toList.map blockText)
-  | .dl items =>
-    "\n".intercalate <| items.toList.map fun
-      | ⟨term, contents⟩ =>
-        "".intercalate (term.toList.map inlineText) ++ " " ++
-        "\n".intercalate (contents.toList.map blockText)
-  | .blockquote items
-  | .concat items
-  | .other _ items => "\n".intercalate (items.toList.map blockText)
-  | .code str => str
-
-partial def partText (includeTitle : Bool) (part : Part Post) : String :=
-  let title := if includeTitle then part.titleString else ""
-  let content := "\n\n".intercalate (part.content.toList.map blockText)
-  let subParts := "\n\n".intercalate (part.subParts.toList.map (partText true))
-  "\n\n".intercalate <| [title, content, subParts].filter (!·.isEmpty)
-
-mutual
-  partial def partSummary (part : Part Post) : String :=
-    let content := "\n\n".intercalate (part.content.toList.map blockText)
-    if content.isEmpty then partsSummary part.subParts else content
-
-  partial def partsSummary (parts : Array (Part Post)) : String := Id.run do
-    for part in parts do
-      let summary := partSummary part
-      if !summary.isEmpty then
-        return summary
-    return ""
-end
-
-def postSummary (post : BlogPost) : String :=
-  let summary := "\n\n".intercalate (post.summary.toList.map blockText)
-  if summary.isEmpty then partSummary post.contents else summary
 
 def entryXml (entry : Entry) : String :=
   let authors :=
@@ -118,7 +61,7 @@ def postEntry (pathToBlog : String) (post : BlogPost) : M (Option Entry) := do
     url := absoluteUrl path,
     updated := atomTimestamp metadata.date,
     authors := metadata.authors,
-    summary := postSummary post
+    summary := Text.postSummary post
   }
 
 partial def collectDir (path : List String) : Dir → M (List Entry)

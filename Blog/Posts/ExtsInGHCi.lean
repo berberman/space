@@ -1,6 +1,6 @@
 import VersoBlog
 import Blog.Categories
-import Blog.Meta
+import Blog.Site.Extensions
 open Verso Genre Blog
 
 #doc (Post) "Default Language Extensions Enabled in GHCi" =>

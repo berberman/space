@@ -1,6 +1,6 @@
 import VersoBlog
 import Blog.Categories
-import Blog.Meta
+import Blog.Site.Extensions
 open Verso Genre Blog
 
 #doc (Post) "HEq and Axiom K: An Exploration in Lean" =>

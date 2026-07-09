@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Profile photo placeholder</title>
+  <desc id="desc">A reserved portrait frame for a future academic profile photo.</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbfd"/>
+      <stop offset="0.58" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e8f0f6"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#245a8d"/>
+      <stop offset="1" stop-color="#173f65"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#paper)"/>
+  <rect x="34" y="34" width="732" height="932" rx="18" fill="none" stroke="#d8d6cf" stroke-width="4"/>
+  <circle cx="400" cy="350" r="122" fill="none" stroke="url(#ink)" stroke-width="22" opacity="0.72"/>
+  <path d="M208 704c30-119 107-185 192-185s162 66 192 185" fill="none" stroke="url(#ink)" stroke-width="24" stroke-linecap="round" opacity="0.72"/>
+  <path d="M154 824h492" stroke="#b7b4aa" stroke-width="3" stroke-linecap="round" opacity="0.62"/>
+  <text x="400" y="872" text-anchor="middle" font-family="Avenir Next, Segoe UI, sans-serif" font-size="32" font-weight="700" fill="#858177" letter-spacing="3">PROFILE PHOTO</text>
+  <text x="400" y="916" text-anchor="middle" font-family="Avenir Next, Segoe UI, sans-serif" font-size="22" font-weight="600" fill="#858177" letter-spacing="2">PLACEHOLDER</text>
+</svg>

@@ -1,9 +1,8 @@
 import VersoBlog
 
-import Blog.Posts
-import Blog.About
-import Blog.FrontPage
+import Blog.Site.Basic
+import Blog.Site.Render
+import Blog.Site.Theme
+import Blog.Site.Tree
 import Blog.Atom
-import Blog.Html
 import Blog.SEO
-import Blog.SiteConfig

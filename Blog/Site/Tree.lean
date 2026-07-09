@@ -6,19 +6,15 @@ import Blog.FrontPage
 
 open Verso Genre Blog Site Syntax Doc Output Html
 
-namespace Blog.SiteTree
-
-def blog : Site := site FrontPage /
+def Blog.SiteTree.blog : Site := site Blog.FrontPage /
   static "static" ← "static_files"
-  "about" About
-  -- "academic" Academic
-  "blog" Posts with
-    Posts.MoreVerso
-    Posts.ConvoyPatterns
-    Posts.HEqAndAxiomK
-    Posts.HelloVerso
-    Posts.UploadAndroidLibsToGitHub
-    Posts.ExtsInGHCi
-    Posts.ArchHaskell
-
-end Blog.SiteTree
+  "about" Blog.About
+  -- "academic" Blog.Academic
+  "blog" Blog.Posts with
+    Blog.Posts.MoreVerso
+    Blog.Posts.ConvoyPatterns
+    Blog.Posts.HEqAndAxiomK
+    Blog.Posts.HelloVerso
+    Blog.Posts.UploadAndroidLibsToGitHub
+    Blog.Posts.ExtsInGHCi
+    Blog.Posts.ArchHaskell

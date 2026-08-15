@@ -122,17 +122,19 @@ partial def items : Html → Array Item
 def itemHtml (pagePath : String) (item : Item) : Html :=
   {{<li class=s!"section-sidebar__item section-sidebar__item--h{item.level}"><a href=s!"{pagePath}#{item.id}" data-section-id={{item.id}}>{{item.label}}</a></li>}}
 
-def render (pagePath : String) (content : Html) : Html :=
+def render (pagePath : String) (title : String) (content : Html) : Html :=
   let found := items content
   if found.size < 2 then
     Html.empty
   else
-    {{<aside class="section-sidebar" aria-label="On this page">
-        <div class="section-sidebar__title">"On this page"</div>
+    {{
+      <aside class="section-sidebar" aria-label={{title}}>
+        <div class="section-sidebar__title">{{title}}</div>
         <nav>
           <ol>{{found.map <| itemHtml pagePath}}</ol>
         </nav>
-      </aside>}}
+      </aside>
+    }}
 
 end Blog.SectionSidebar
 

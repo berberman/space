@@ -83,6 +83,7 @@ def collectSite : Site → M (List Entry)
 def writeFeed (site : Site) (options : List String) : IO Unit := do
   let cfg ← parseOptions options
   let entries ← collectSite site |>.run cfg
+  let entries := entries.mergeSort (fun a b => b.updated ≤ a.updated)
   IO.FS.writeFile (cfg.destination.join "atom.xml") (feedXml entries)
 
 end Blog.Atom

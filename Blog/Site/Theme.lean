@@ -7,15 +7,30 @@ open Verso Genre Blog Site Syntax Doc Output Html SiteConfig Template Theme
 
 namespace Blog.Theme
 
+def isScribblePath (path : Multi.Path) : Bool :=
+  match path.toList with
+  | "scribbles" :: _ => true
+  | _ => false
+
+def dateForPath (path : Multi.Path) (date : Date) : String :=
+  if isScribblePath path then
+    s!"{date.year}年{date.month}月{date.day}日"
+  else
+    date.toReadable
+
 def mainClassForPath (path : Multi.Path) : String :=
   match path.toList with
   | [] => "page page--home"
   | ["about"] => "page page--about"
   | ["academic"] => "page page--academic"
+  | "scribbles" :: _ => "page page--scribbles"
   | _ => "page"
 
 def theme : Theme := { Theme.default with
   archiveEntryTemplate := do
+    let path ← currentPath
+    let isScribble := isScribblePath path
+    let readMoreLabel := if isScribble then "继续阅读" else "Read more"
     let post : BlogPost ← param "post"
     let summary ← param "summary"
     let target ← if let some p := (← param? "path") then
@@ -37,7 +52,7 @@ def theme : Theme := { Theme.default with
            | some md => {{
             <div class="metadata">
               <div class="date">
-                {{(md : Post.PartMetadata).date.toReadable}}
+                {{dateForPath path (md : Post.PartMetadata).date}}
               </div>
               <div class="authors">
                 {{(md : Post.PartMetadata).authors.map ({{<span class="author">{{Html.text true ·}}</span>}}) |>.toArray}}
@@ -49,20 +64,24 @@ def theme : Theme := { Theme.default with
                   </ul>
                 }}
               }}
-              {{ReadingStats.render stats}}
+              -- Don't show ReadingStats for scribbles
+              {{if isScribble then Html.empty else ReadingStats.render stats}}
             </div>
            }}
           }}
         {{Footnotes.runSummary target summary}}
-        <a href={{target}} class="read-more">"Read more"</a>
+        <a href={{target}} class="read-more">{{readMoreLabel}}</a>
       </li>
     }}]
   postTemplate := do
+    let path ← currentPath
+    let isScribble := isScribblePath path
+    let giscusLang := if isScribble then "zh-CN" else "en"
+    let pagePath := routePath path.toList
     let catAddr ← do
       if let some p := (← param? "path") then
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
-    let pagePath := routePath (← currentPath).toList
     let rawContent : Html ← param "content"
     let stats := Blog.ReadingStats.fromHtml rawContent
     let metadata := match (← param? "metadata") with
@@ -70,7 +89,7 @@ def theme : Theme := { Theme.default with
          | some md => {{
           <div class="metadata">
             <div class="date">
-              {{(md : Post.PartMetadata).date.toReadable}}
+              {{dateForPath path (md : Post.PartMetadata).date}}
             </div>
             <div class="authors">
               {{(md : Post.PartMetadata).authors.map ({{<span class="author">{{Html.text true ·}}</span>}}) |>.toArray}}
@@ -82,13 +101,15 @@ def theme : Theme := { Theme.default with
                 </ul>
               }}
             }}
-            {{Blog.ReadingStats.render stats}}
+            -- Similarly
+            {{if isScribble then Html.empty else Blog.ReadingStats.render stats}}
           </div>
          }}
     let mut content := rawContent
     content := Footnotes.run pagePath content
     content := HeadingLinks.run pagePath content
-    let sidebar := SectionSidebar.render pagePath content
+    let sidebarTitle := if isScribble then "本文目录" else "On this page"
+    let sidebar := SectionSidebar.render pagePath sidebarTitle content
     pure {{
       <h1>{{← param "title"}}</h1>
       {{ metadata }}
@@ -106,45 +127,49 @@ def theme : Theme := { Theme.default with
                 data-emit-metadata="0"
                 data-input-position="bottom"
                 data-theme={{absoluteUrl "/static/giscus.css"}}
-                data-lang="en"
+                data-lang={{giscusLang}}
                 crossorigin="anonymous"
                 async>
         </script>
       </section>
     }}
   primaryTemplate := do
+    let path ← currentPath
+    let isScribble := isScribblePath path
+    let postsLabel := if isScribble then "小碎片" else "Posts"
+    let categoriesLabel := if isScribble then "分类" else "Categories"
+    let htmlLang := if isScribble then "zh-CN" else "en"
     let postList :=
       match (← param? "posts") with
       | none => Html.empty
       | some html => {{
-          <section class="archive-posts">
-            <div class="archive-section-label">"Posts"</div>
-            {{html}}
-          </section>
-        }}
+        <section class="archive-posts">
+          <div class="archive-section-label">{{postsLabel}}</div>
+          {{html}}
+        </section>
+      }}
     let catList :=
       match (← param? (α := Post.Categories) "categories") with
       | none => Html.empty
       | some ⟨cats⟩ => {{
-          <section class="category-directory archive-categories">
-            <div class="archive-section-label">"Categories"</div>
-            <ul>
+        <section class="category-directory archive-categories">
+          <div class="archive-section-label">{{categoriesLabel}}</div>
+          <ul>
             {{ cats.map fun (target, cat) =>
               {{<li><a href={{target}}>{{Post.Category.name cat}}</a></li>}}
             }}
-            </ul>
-          </section>
-        }}
+          </ul>
+        </section>
+      }}
     let title ← param (α := String) "title"
     let content ← param (α := Html) "content"
     let description := Blog.SEO.descriptionFromHtml content
-    let path := ← currentPath
     let canonical := canonicalUrl path
     let mainClass := mainClassForPath path
     let metadata? ← param? (α := Post.PartMetadata) "metadata"
     let seoTags := Blog.SEO.metaTags title description canonical metadata?
     return {{
-      <html>
+      <html lang={{htmlLang}}>
         <head>
           <meta charset="utf-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1"/>

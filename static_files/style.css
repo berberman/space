@@ -1380,51 +1380,18 @@ math[display="block"] {
 /* --------------------------------------------------------------------------
    Scribbles / Chinese
    -------------------------------------------------------------------------- */
-
+/* Scribbles use exactly the same layout/style as regular posts.
+   Only add better CJK font fallback for prose. */
 .page--scribbles {
-  --verso-text-font-family:
+  font-family:
+    "Source Serif 4",
     "Noto Serif CJK SC",
     "Source Han Serif SC",
     "Songti SC",
     "STSong",
-    "SimSun",
     serif;
-
-  --verso-structure-font-family:
-    "Noto Sans CJK SC",
-    "Source Han Sans SC",
-    "PingFang SC",
-    "Microsoft YaHei",
-    system-ui,
-    sans-serif;
 }
 
-/* Chinese prose benefits from a little more breathing room. */
-.page--scribbles p,
-.page--scribbles li {
-  line-height: 1.85;
-}
-
-/* The global theme uses negative heading tracking, which is mostly
-   an English/Latin typography choice. */
-.page--scribbles h1,
-.page--scribbles h2,
-.page--scribbles h3,
-.page--scribbles h4,
-.page--scribbles h5,
-.page--scribbles h6 {
-  letter-spacing: 0;
-}
-
-/* Existing metadata inserts "by " using CSS. */
 .page--scribbles .authors:not(:empty)::before {
   content: "作者：";
 }
-
-/* Avoid English-style uppercase/tracking treatment for Chinese labels. */
-.page--scribbles .archive-section-label,
-.page--scribbles .section-sidebar__title {
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-

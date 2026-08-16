@@ -184,15 +184,27 @@ namespace Blog.Anchors
 
 open Std
 
-abbrev M := StateM (HashSet Multi.Slug)
+-- Don't use Multi.Slug as it has poor non-English suppoty
+abbrev M := StateM (HashSet String)
 
-def idSlug? (metadata : Option Post.Meta) : Option Multi.Slug := do
-  let md ← metadata
-  let htmlId ← md.htmlId
-  return htmlId.sluggify
+def anchorBase (title : String) : String :=
+  normalizeSpaces title |>.replace " " "-"
+
+partial def uniqueId (used : HashSet String) (base : String) : String :=
+  if !used.contains base then
+    base
+  else
+    go 2
+where
+  go (n : Nat) :=
+    let candidate := s!"{base}-{n}"
+    if used.contains candidate then
+      go (n + 1)
+    else
+      candidate
 
 partial def collectIds (part : Part Post) : M Unit := do
-  if let some htmlId := idSlug? part.metadata then
+  if let some htmlId := part.metadata >>= (·.htmlId) then
     modify (·.insert htmlId)
   part.subParts.forM collectIds
 
@@ -201,14 +213,20 @@ def withId (fallback : Post.Meta) (part : Part Post) (htmlId : String) : Post.Me
   | some md => { md with htmlId := some htmlId }
   | none => { fallback with htmlId := some htmlId }
 
-partial def addPartIds (fallback : Post.Meta) (part : Part Post) : M (Part Post) := do
+partial def addPartIds
+    (fallback : Post.Meta)
+    (part : Part Post) : M (Part Post) := do
   let part ←
     match part.metadata >>= (·.htmlId) with
     | some _ => pure part
     | none =>
-      let slug := Multi.Slug.unique (← get) part.titleString.sluggify
-      modify (·.insert slug)
-      pure { part with metadata := some (withId fallback part slug.toString) }
+      let base := anchorBase part.titleString
+      let id := uniqueId (← get) base
+      modify (·.insert id)
+      pure {
+        part with
+        metadata := some (withId fallback part id)
+      }
   let subParts ← part.subParts.mapM (addPartIds fallback)
   pure { part with subParts }
 

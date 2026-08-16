@@ -1,6 +1,7 @@
 import VersoBlog
 
 import Blog.Scribbles.FirstScribble
+import Blog.Scribbles.MagicalStructure
 
 open Verso Genre Blog
 

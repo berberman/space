@@ -2,6 +2,7 @@ import VersoBlog
 
 import Blog.Scribbles.FirstScribble
 import Blog.Scribbles.MagicalStructure
+import Blog.Scribbles.NestedInductive
 
 open Verso Genre Blog
 

@@ -1,0 +1,11 @@
+name = "NestedInductives"
+version = "0.1.0"
+defaultTargets = ["NestedInductives"]
+
+[[require]]
+name = "verso"
+git = "https://github.com/leanprover/subverso.git"
+rev = "verso-v4.31.0"
+
+[[lean_lib]]
+name = "NestedInductives"

@@ -20,5 +20,6 @@ def Blog.SiteTree.blog : Site := site Blog.FrontPage /
     Blog.Posts.ExtsInGHCi
     Blog.Posts.ArchHaskell
   "scribbles" Blog.Scribbles with
+    Blog.Scribbles.NestedInductive
     Blog.Scribbles.MagicalStructure
     Blog.Scribbles.FirstScribble

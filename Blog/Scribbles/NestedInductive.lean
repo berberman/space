@@ -224,7 +224,7 @@ for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail 
 对比一下它们就会发现除了 major premise 以及最后的 conclusion 外它们形状是完全一致的。
 此外，它们还是相互递归的。
 
-这个细节来自于目前 nested inductive types 的实现： kernel 在临时环境中把它们 _翻译_ 成消去嵌套、
+这个细节来自于目前 nested inductive types 的实现：kernel 在临时环境中把它们 _翻译_ 成消去嵌套、
 只有相互递归 mutual block 中的辅助类型，
 对着辅助类型生成 recursor 之后再把其中提到辅助类型的地方重命名回来。
 最后扔掉辅助类型定义，只保留辅助 recursor 添加到原来的类型上。
@@ -235,44 +235,45 @@ for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail 
 ```lean e
 mutual
 
-inductive Tree' (α : Type) where
-  | leaf : α → Tree' α
-  | node : _nested.List_1 α → Tree' α
+inductive _nested.Tree (α : Type) where
+  | leaf (valie : α) : _nested.Tree α
+  | node (children : _nested.Tree α) : _nested.Tree α
 
 inductive _nested.List_1 (α : Type) where
   | nil : _nested.List_1 α
-  | cons (head : Tree' α)  (tail : _nested.List_1 α) : _nested.List_1 α
+  | cons (head : _nested.Tree α)  (tail : _nested.List_1 α) : _nested.List_1 α
 
 end
 ```
 
-整个 {lean empty}`List` 类型被拷贝了成了 `_nested.List_1`，
-它们具有相同的形状！
+`Tree` 定义中发生的嵌套字段是 `node` 构造器中的 `List (Tree α)`。这里 `Tree α` 是 `List` 的 inductive parameter。
+所以创建的辅助类型 `_nested.List_1` 就是特化的 `List`——`List (Tree α)`，其包含 `List` 的所有构造器
+并把 `α` 替换为 `_nested.Tree`。
 
-我们来对比一下手动翻译之后 `Tree'` 的 recursor 和之前的 `Tree.rec` ：
+我们来对比一下手动翻译之后 `_nested.Tree.rec` 的 recursor 和之前的 `Tree.rec` ：
 
-```lean e (name := Tree'.rec)
-#print Tree'.rec
+```lean e (name := nestedTree.rec)
+#print _nested.Tree.rec
 ```
 
-```leanOutput Tree'.rec
-recursor Tree'.rec.{u} : {α : Type} →
-  {motive_1 : Tree' α → Sort u} →
+```leanOutput nestedTree.rec
+recursor _nested.Tree.rec.{u} : {α : Type} →
+  {motive_1 : _nested.Tree α → Sort u} →
     {motive_2 : _nested.List_1 α → Sort u} →
-      ((a : α) → motive_1 (Tree'.leaf a)) →
-        ((a : _nested.List_1 α) → motive_2 a → motive_1 (Tree'.node a)) →
+      ((valie : α) → motive_1 (_nested.Tree.leaf valie)) →
+        ((children : _nested.Tree α) → motive_1 children → motive_1 children.node) →
           motive_2 _nested.List_1.nil →
-            ((head : Tree' α) →
+            ((head : _nested.Tree α) →
                 (tail : _nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (_nested.List_1.cons head tail)) →
-              (t : Tree' α) → motive_1 t
+              (t : _nested.Tree α) → motive_1 t
 number of parameters: 1
 number of indices: 0
 number of motives: 2
 number of minors: 4
 rules:
-for Tree'.leaf (1 fields): fun α motive_1 motive_2 leaf node nil cons a => leaf a
-for Tree'.node (1 fields): fun α motive_1 motive_2 leaf node nil cons a =>
-  node a (_nested.List_1.rec leaf node nil cons a)
+for _nested.Tree.leaf (1 fields): fun α motive_1 motive_2 leaf node nil cons valie => leaf valie
+for _nested.Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =>
+  node children (_nested.Tree.rec leaf node nil cons children)
 ```
 
 ```leanOutput Tree.rec
@@ -294,7 +295,7 @@ for Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =
   node children (Tree.rec_1 leaf node nil cons children)
 ```
 
-以及辅助类型的 recursor 和 `Tree` 的辅助 recursor：
+以及辅助类型 `_nested.List_1` 的 recursor 和 `Tree` 的辅助 recursor：
 
 ```lean e (name := nested.List_1.rec)
 #print _nested.List_1.rec
@@ -302,12 +303,12 @@ for Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =
 
 ```leanOutput nested.List_1.rec
 recursor _nested.List_1.rec.{u} : {α : Type} →
-  {motive_1 : Tree' α → Sort u} →
+  {motive_1 : _nested.Tree α → Sort u} →
     {motive_2 : _nested.List_1 α → Sort u} →
-      ((a : α) → motive_1 (Tree'.leaf a)) →
-        ((a : _nested.List_1 α) → motive_2 a → motive_1 (Tree'.node a)) →
+      ((valie : α) → motive_1 (_nested.Tree.leaf valie)) →
+        ((children : _nested.Tree α) → motive_1 children → motive_1 children.node) →
           motive_2 _nested.List_1.nil →
-            ((head : Tree' α) →
+            ((head : _nested.Tree α) →
                 (tail : _nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (_nested.List_1.cons head tail)) →
               (t : _nested.List_1 α) → motive_2 t
 number of parameters: 1
@@ -317,7 +318,7 @@ number of minors: 4
 rules:
 for _nested.List_1.nil (0 fields): fun α motive_1 motive_2 leaf node nil cons => nil
 for _nested.List_1.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail =>
-  cons head tail (Tree'.rec leaf node nil cons head) (_nested.List_1.rec leaf node nil cons tail)
+  cons head tail (_nested.Tree.rec leaf node nil cons head) (_nested.List_1.rec leaf node nil cons tail)
 ```
 
 ```leanOutput Tree.rec_1
@@ -340,10 +341,13 @@ for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail 
 ```
 
 它们几乎是完全能对应上的——并且所有 `_nested.List_1 α` 都被还原回了 `List (Tree α)`。
+辅助类型的 recursor 成了原来类型的辅助 recursor，其中特化的辅助类型被替换回了原来类型中发生嵌套的那个 inductive type 应用到
+原来类型上。
 
 # 翻译算法
 
-看过具体的例子之后翻译过程其实就不难理解了。考虑
+看过具体的例子之后翻译过程其实就不难理解了。考虑以下 inductive type，
+有 {typst}[$`[r]`] 个构造器；每个构造器只有一个字段，嵌套了 {typst}[$`[d_i]`] 个 inductive types：
 
 ```
 inductive T where
@@ -357,7 +361,7 @@ Kernel 维护了一个 work queue 用于计算嵌套翻译的闭包。最初队�
 
 {typst}[$$`[T]`]
 
-处理 {typst}[$`T`]：对于其所有构造器发生嵌套类型 uniquely 生成辅助 inductive types 并加入队列：
+处理 {typst}[$`T`]：对于其所有构造器发生嵌套类型 uniquely 生成辅助 inductive types （特化其 parameters 为 `T`）并加入队列：
 
 {typst}[$$`[T, A_(1,1), A_(2,1), ..., A_(r, 1)]`]
 
@@ -410,31 +414,6 @@ inductive T where
 ]
 ```
 
-## 空间复杂度
-
-看一乐就好，应该不是很准确。
-考虑上面定义的 {typst}[$`T`]。
-对于构造器 {typst}[$`c_i`]，其嵌套层数为 {typst}[$`d_i`]。
-那么最深嵌套层数为 {typst}[$`d = max_i d_i`]。
-假设 {typst}[$`n_j`] 为 {typst}[$`j`] 层独特的特化辅助类型数量，
-那么生成的辅助类型总数（除 {typst}[$`T`] 本身）就是
-
-{typst}[$$`N = sum_(j = 1)^d n_j`]
-
-考虑特化（或者说剥开）到第 {typst}[$`j`] 层：
-
-{typst}[$$`F_(i, j)(F_(i, j + 1) ... F_(i, d_i)(T) ...))`]
-
-即 {typst}[$`j`] 层特化最多会包含 {typst}[$`d - j + 1`] 层。
-那么辅助定义占据的空间就是
-
-{typst}[$$`cal(O)(sum_(j = 1)^d n_j (d - j + 1))`]
-
-而翻译 {typst}[$`N + 1`] 个辅助类型之后每个 recursor 需要包含所有其他生成类型的信息，
-即 {typst}[$`cal(O)(N^2)`]。因此
-
-{typst}[$$`cal(O)(sum_(j = 1)^d n_j (d - j + 1) + N^2) = cal(O)(N d + N^2) `]
-
 # 被忽略的检查
 
 现在我们可以看下 [#14576](https://github.com/leanprover/lean4/issues/14576) 到底是怎么个事。
@@ -475,11 +454,17 @@ inductive Bar where
   | mk : Foo 1 Bar → Bar
 ```
 
-显然这东西不应该通过类型检查——`Foo` 的类型是
+显然这东西不应该通过类型检查——`Foo` 的类型是：
 
-{leanCommand examples FooType}
+```lean e (name := FooT)
+#check Foo
+```
 
-即 `Foo : Bool → Type → Type`，而我们在尝试把 `1` 传给一个 {lean empty}`Bool`。
+```leanOutput FooT
+Foo (b : Bool) (α : Type) : Type
+```
+
+即 `Foo : Bool → Type → Type`，而我们在尝试把 `1` 传给一个 {lean empty}`Bool` 参数。
 
 为了绕过 elaborator，我们用一些简单的元编程直接构造并定义它：
 

@@ -1402,7 +1402,6 @@ math[display="block"] {
 
 .typst-inline>svg {
   display: inline-block;
-  vertical-align: 0.05em;
   overflow: visible;
 }
 

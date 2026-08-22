@@ -6,6 +6,7 @@ import Blog.Posts.HelloVerso
 import Blog.Posts.HEqAndAxiomK
 import Blog.Posts.ConvoyPatterns
 import Blog.Posts.MoreVerso
+import Blog.Posts.TypstVerso
 
 open Verso Genre Blog
 

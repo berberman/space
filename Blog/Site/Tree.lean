@@ -12,6 +12,7 @@ def Blog.SiteTree.blog : Site := site Blog.FrontPage /
   "about" Blog.About
   -- "academic" Blog.Academic
   "blog" Blog.Posts with
+    Blog.Posts.TypstVerso
     Blog.Posts.MoreVerso
     Blog.Posts.ConvoyPatterns
     Blog.Posts.HEqAndAxiomK

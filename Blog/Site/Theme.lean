@@ -40,7 +40,7 @@ def theme : Theme := { Theme.default with
       if let some p := (← param? "path") then
         pure <| fun slug => p ++ "/" ++ slug
       else pure <| fun slug => slug
-    let stats := ReadingStats.fromPost post
+    -- let stats := ReadingStats.fromPost post
 
     return #[{{
       <li>
@@ -65,7 +65,8 @@ def theme : Theme := { Theme.default with
                 }}
               }}
               -- Don't show ReadingStats for scribbles
-              {{if isScribble then Html.empty else ReadingStats.render stats}}
+              -- Disabled for now. Need to skip math code
+              -- {{if isScribble then Html.empty else ReadingStats.render stats}}
             </div>
            }}
           }}
@@ -102,7 +103,7 @@ def theme : Theme := { Theme.default with
               }}
             }}
             -- Similarly
-            {{if isScribble then Html.empty else Blog.ReadingStats.render stats}}
+            -- {{if isScribble then Html.empty else Blog.ReadingStats.render stats}}
           </div>
          }}
     let mut content := rawContent

@@ -347,7 +347,7 @@ for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail 
 # 翻译算法
 
 看过具体的例子之后翻译过程其实就不难理解了。考虑以下 inductive type，
-有 {typst}[$`[r]`] 个构造器；每个构造器只有一个字段，嵌套了 {typst}[$`[d_i]`] 个 inductive types：
+有 {typst}`[r]` 个构造器；每个构造器只有一个字段，嵌套了 {typst}`[d_i]` 个 inductive types：
 
 ```
 inductive T where
@@ -357,35 +357,37 @@ inductive T where
   | cᵣ : Fᵣ,₁ (Fᵣ,₂ (... (Fᵣ,dᵣ T) ...)) → T
 ```
 
-Kernel 维护了一个 work queue 用于计算嵌套翻译的闭包。最初队列只有 {typst}[$`T`] 本身：
+Kernel 维护了一个 work queue 用于计算嵌套翻译的闭包。最初队列只有 {typst}`T` 本身：
 
-{typst}[$$`[T]`]
+{typst}`[T]`
 
-处理 {typst}[$`T`]：对于其所有构造器发生嵌套类型 uniquely 生成辅助 inductive types （特化其 parameters 为 `T`）并加入队列：
+处理 {typst}`T`：对于其所有构造器发生嵌套类型 uniquely 生成辅助 inductive types （特化其 parameters 为 `T`）并加入队列：
 
-{typst}[$$`[T, A_(1,1), A_(2,1), ..., A_(r, 1)]`]
+{typst +display}`[T, A_(1,1), A_(2,1), ..., A_(r, 1)]`
 
-注意到一次处理只会剥开一层。现在该处理 {typst}[$`A_(1,1)`] 了。
-类似地，我们创造另一个辅助类型 {typst}[$`A_(1,2)`] 并从 {typst}[$`F_(1,1)`] 拷贝所有的构造器。
+注意到一次处理只会剥开一层。现在该处理 {typst}`A_(1,1)` 了。
+类似地，我们创造另一个辅助类型 {typst}`A_(1,2)` 并从 {typst}`F_(1,1)` 拷贝所有的构造器。
 
 更新队列之后：
 
-{typst}[$$`[T, A_(1,1), A_(2,1), ..., A_(r, 1), A_(1,2)]`]
+{typst +display}`[T, A_(1,1), A_(2,1), ..., A_(r, 1), A_(1,2)]`
 
-沿着队列处理下去直到 {typst}[$`A_(r,1)`]，我们有：
+沿着队列处理下去直到 {typst}`A_(r,1)`，我们有：
 
-{typst}[$$`[T, A_(1,1), A_(2,1), ..., A_(r, 1), A_(1,2), A_(2,2), ..., A_(r, 2)]`]
+{typst +display}`[T, A_(1,1), A_(2,1), ..., A_(r, 1), A_(1,2), A_(2,2), ..., A_(r, 2)]`
 
-接着处理到 {typst}[$`A_(1,2)`] 时发现它依旧存在嵌套，那么继续处理直到队尾，
+接着处理到 {typst}`A_(1,2)` 时发现它依旧存在嵌套，那么继续处理直到队尾，
 就这样一点一点剥开并特化嵌套得到（每一行是一次前进的结果）：
 
-{typst}[$$`[
-  T, \
-  A_(1,1), A_(2,1), ..., A_(r, 1), \
-  A_(1,2), A_(2,2), ..., A_(r, 2), \
-  ... \
+{typst +display}`
+mat(delim: "[",
+  T;
+  A_(1,1), A_(2,1), ..., A_(r, 1);
+  A_(1,2), A_(2,2), ..., A_(r, 2);
+  ...;
   A_(1, d_1), A_(2, d_2), ..., A_(r, d_r)
-  ]`]
+ )
+`
 
 比较重要的一点是同样的特化会被 memoized，例如：
 

@@ -1,19 +1,16 @@
 {
   pkgs ? import <nixpkgs> { },
 }:
-
-(pkgs.buildFHSEnv {
-  name = "blog-env";
-  targetPkgs =
-    pkgs:
-    (with pkgs; [
-      stdenv.cc
-      (python3.withPackages (
-        python-pkgs: with python-pkgs; [
-          beautifulsoup4
-        ]
-      ))
-      biome
-    ]);
-  runScript = "zsh";
-}).env
+pkgs.mkShell {
+  buildInputs = with pkgs; [
+    stdenv.cc
+    rustc
+    cargo
+    rustfmt
+    clippy
+    rust-analyzer
+    biome
+    openssl
+    pkg-config
+  ];
+}

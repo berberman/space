@@ -3,6 +3,8 @@ import Verso.Doc.ArgParse
 import Verso.Doc.Elab
 import Verso.Parser
 
+import Blog.Site.Typst
+
 open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser Template
 
 namespace Blog.Table
@@ -210,18 +212,6 @@ open Lean
 open Verso Output Html
 open Elab Command
 open Lean.Doc.Syntax
-
-@[role]
-def typst : RoleExpanderOf Unit
-  | (), contents => do
-    let inl ← match contents with
-      | #[inl] => pure inl
-      | _ => throwError "Expected precisely one inline math, got {contents}"
-    let html ← match inl with
-      | `(inline| \math code($s)) => pure {{ <span class = "typst-inline"> {{Html.text false s.getString }} </span>}}
-      | `(inline| \displaymath code($s)) => pure {{ <div class="typst-block"> {{Html.text false s.getString }} </div>}}
-      | _ => throwErrorAt inl "Expected math code or displaymath code"
-    `(_root_.Verso.Doc.Inline.other (Blog.InlineExt.blob $(quote html)) #[])
 
 def mkLangCodeBlock (lang : String) (code : String) : Html :=
   {{<pre><code class=s!"language-{lang}">{{code}}</code></pre>}}

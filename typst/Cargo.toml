@@ -1,0 +1,24 @@
+[package]
+name = "space-typst"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Keep the Typst crates on exactly the same version.
+typst = "=0.15.1"
+typst-layout = "=0.15.1"
+typst-svg = "=0.15.1"
+
+typst-kit = {
+  version = "=0.15.1",
+  default-features = false,
+  features = [
+    "embedded-fonts",
+    "system-packages",
+    "system-downloader",
+  ]
+}

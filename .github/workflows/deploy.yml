@@ -22,11 +22,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-          cache: 'pip'
-      - run: pip install -r requirements.txt
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Install elan
         run: |
           set -o pipefail
@@ -69,9 +66,6 @@ jobs:
             ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-${{ steps.cache-keys.outputs.manifest }}-
             ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-${{ steps.cache-keys.outputs.lakefile }}-
             ${{ runner.os }}-${{ steps.cache-keys.outputs.toolchain }}-
-
-      - name: Setup typst
-        uses: typst-community/setup-typst@v4
 
       - name: Build blog
         run: lake exe generate-blog

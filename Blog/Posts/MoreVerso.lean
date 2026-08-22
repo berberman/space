@@ -70,7 +70,7 @@ So I implemented Markdown-style pipe tables instead. For example, the following 
  ```
  table +header (align := center)
  | Col1 | *Col 2* | Col 3 |
- | text | `code` | {typst}[$`f(x)`] |
+ | text | `code` | {typst}`f(x)` |
  | {lean e}`Prop` | _apple_ | 2.2 |
  ```
 
@@ -78,7 +78,7 @@ is rendered as
 
  ```table +header (align := center)
  | Col1 | *Col 2* | Col 3 |
- | text | `code` | {typst}[$`f(x)`] |
+ | text | `code` | {typst}`f(x)` |
  | {lean e}`Prop` | _apple_ | 2.2 |
  ```
 
@@ -109,4 +109,4 @@ Think about it more carefully, Verso's whole model is pretty wild.
 Every post is a Lean source file. The post is parsed into Verso markup syntax, then elaborated into Lean expression defining a Verso document.
 At runtime, that Lean expression is evaluated to produce the Verso document data, which is then rendered as HTML.
 I think this is very much in the sprit of "Lean 4": excellent extensibility, extensive metaprogramming, everything implemented in Lean itself, and a fairly cursed pipeline that somehow produces quite good results.
-I like the Gabriel's the MIT philosophy v.s. the New Jersey philosophy in his "The MIT Way: Worse Is Better" -- here I feel Lean 4 has MIT ambitions in theory and New Jersey engineering in practice :).
+I like the Gabriel's the MIT philosophy v.s. the New Jersey philosophy in his "The MIT Way: Worse Is Better" — here I feel Lean 4 has MIT ambitions in theory and New Jersey engineering in practice :).

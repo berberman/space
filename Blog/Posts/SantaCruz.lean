@@ -55,12 +55,6 @@ Santa Cruz had taught me that 80% is actually pretty good.
 :::afilmory "2024-alanst_8cc54121" 4032 3024 (alt := "State College") (caption := "State College: the control group.")
 :::
 
-
-I moved to Santa Cruz about a year ago.
-Before that, I was an undergead at [Penn State](https://www.psu.edu/),
-living [Sate College, Pennsylvania](https://en.wikipedia.org/wiki/State_College,_Pennsylvania)
-—a place that is, by almost any reasonable definition, in the _middle of no where_.
-
 # Amenities & Prices
 
 My first impression of Santa Cruz was that much of the city looked dirty, chaotic, and run-down.

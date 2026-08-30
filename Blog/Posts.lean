@@ -7,6 +7,7 @@ import Blog.Posts.HEqAndAxiomK
 import Blog.Posts.ConvoyPatterns
 import Blog.Posts.MoreVerso
 import Blog.Posts.TypstVerso
+import Blog.Posts.SantaCruz
 
 open Verso Genre Blog
 

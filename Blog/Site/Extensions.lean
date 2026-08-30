@@ -55,6 +55,7 @@ structure Config where
   embedWidth : String := "100%"
   useAsOgImage : Bool := false
   alt : String := "Afilmory photo"
+  caption : Option String := none
 deriving ToJson, FromJson
 
 def thumbnailUrl (photoId : String) : String :=
@@ -72,13 +73,15 @@ block_component afilmoryEmbed (cfg : Config) where
         }
       else
         Html.empty
+    let caption := (cfg.caption.map fun text => {{<figcaption>{{text}}</figcaption>}}).getD Html.empty
     pure <| ogMarker ++ {{
-      <div class="afilmory-embed">
+      <figure class="afilmory-embed">
         <script async src={{embedScriptUrl}}
                 data-afilmory-photo={{cfg.photoId}}
                 data-aspect={{aspect}}
                 data-width={{cfg.embedWidth}}></script>
-      </div>
+        {{caption}}
+      </figure>
     }}
 
 section
@@ -92,7 +95,8 @@ def Config.parse : ArgParse m Config :=
     .positional `height .nat <*>
     .namedD `embedWidth .string "100%" <*>
     .flag `og true <*>
-    .namedD `alt .string "Afilmory photo"
+    .namedD `alt .string "Afilmory photo" <*>
+    .named `caption .string true
 
 instance : FromArgs Config m := ⟨Config.parse⟩
 
@@ -128,7 +132,8 @@ def afilmory : DirectiveExpanderOf _root_.Blog.Afilmory.Config
         $(quote cfg.height)
         $(quote cfg.embedWidth)
         $(quote cfg.useAsOgImage)
-        $(quote cfg.alt)) #[])
+        $(quote cfg.alt)
+        $(quote cfg.caption)) #[])
 
 end Verso.Genre.Blog
 

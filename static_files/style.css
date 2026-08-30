@@ -211,6 +211,16 @@ iframe {
   margin-inline: auto;
 }
 
+.afilmory-embed figcaption {
+  margin-top: var(--space-2);
+  color: var(--page-muted);
+  font-family: var(--verso-text-font-family);
+  font-size: 0.875rem;
+  font-style: italic;
+  line-height: 1.5;
+  text-align: center;
+}
+
 article> :first-child,
 main> :first-child {
   margin-top: 0;

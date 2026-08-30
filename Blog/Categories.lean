@@ -28,3 +28,7 @@ def «meta» : Category where
 def nix : Category where
   name := "Nix"
   slug := "nix"
+
+def life : Category where
+  name := "Life"
+  slug := "life"

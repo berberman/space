@@ -13,8 +13,8 @@ with a particular focus on the implementation of [Lean 4](https://lean-lang.org/
 and its applications to formalization and verification.
 
 I'm also a functional programming enthusiast and
-have used Haskell to build several projects.
-I've been using NixOS for a few years and enjoy exploring tools and systems that
+have used [Haskell](https://www.haskell.org/) to build several projects.
+I've been using [NixOS](https://nixos.org/) for a few years and enjoy exploring tools and systems that
 make software development more reproducible and composable.
 
 Outside of programming, I enjoy cooking and exploring

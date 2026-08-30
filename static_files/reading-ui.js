@@ -3,23 +3,15 @@
   var main = document.querySelector("main");
   var reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   var ticking = false;
+  var lastY = window.scrollY || window.pageYOffset || 0;
   var control = document.createElement("button");
-  var percent = document.createElement("span");
-  var arrow = document.createElement("span");
+  var percent;
 
   control.type = "button";
   control.className = "reading-progress";
   control.setAttribute("aria-label", "Back to top, 0% read");
-
-  percent.className = "reading-progress__percent";
-  percent.textContent = "0%";
-
-  arrow.className = "reading-progress__arrow";
-  arrow.setAttribute("aria-hidden", "true");
-  arrow.textContent = "↑";
-
-  control.appendChild(percent);
-  control.appendChild(arrow);
+  control.innerHTML = '<span class="reading-progress__percent">0%</span>';
+  percent = control.querySelector(".reading-progress__percent");
   document.body.appendChild(control);
 
   function scrollY() {
@@ -48,14 +40,17 @@
     var distance = readableDistance();
     var pageScrollable = isMeaningfullyScrollable();
     var progress = distance > 0 ? Math.round(Math.min(1, currentY / distance) * 100) : 0;
+    var scrollingUp = currentY < lastY;
+    var pastIntro = currentY > 96;
 
     if (header) {
       header.classList.toggle("is-scrolled", currentY > 8);
     }
 
-    control.classList.toggle("is-visible", pageScrollable);
+    control.classList.toggle("is-visible", pageScrollable && pastIntro && scrollingUp);
     percent.textContent = `${progress}%`;
     control.setAttribute("aria-label", `Back to top, ${progress}% read`);
+    lastY = currentY;
 
     ticking = false;
   }

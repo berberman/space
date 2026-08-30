@@ -8,7 +8,12 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use typst::{
-    Library, LibraryExt, World, WorldExt, diag::{FileError, FileResult, SourceDiagnostic}, foundations::{Bytes, Datetime, Duration}, syntax::{FileId, Source, VirtualRoot}, text::{Font, FontBook, FontInfo}, utils::LazyHash,
+    Library, LibraryExt, World, WorldExt,
+    diag::{FileError, FileResult, SourceDiagnostic},
+    foundations::{Bytes, Datetime, Duration},
+    syntax::{FileId, Source, VirtualRoot},
+    text::{Font, FontBook, FontInfo},
+    utils::LazyHash,
 };
 
 use typst_kit::{
@@ -340,32 +345,27 @@ impl MathWorld {
     }
 }
 
-fn make_svg_embeddable(
-    mut svg: String,
-    page: &typst_layout::Page,
-) -> String {
-    let width_em =
-        page.frame.width().to_pt() / TEXT_SIZE_PT;
+fn make_svg_embeddable(svg: String, page: &typst_layout::Page) -> String {
+    let width_em = page.frame.width().to_pt() / TEXT_SIZE_PT;
 
-    let height_em =
-        page.frame.height().to_pt() / TEXT_SIZE_PT;
+    let height_em = page.frame.height().to_pt() / TEXT_SIZE_PT;
 
     let Some(pos) = svg.find("<svg") else {
         return svg;
     };
 
     let insert_at = pos + "<svg".len();
+    let mut svg = svg
+        .replace("fill=\"#000000\"", "fill=\"currentColor\"")
+        .replace("stroke=\"#000000\"", "stroke=\"currentColor\"");
 
     svg.insert_str(
         insert_at,
-        &format!(
-            r#" style="overflow: visible; width: {width_em}em; height: {height_em}em;""#
-        ),
+        &format!(r#" style="overflow: visible; width: {width_em}em; height: {height_em}em;""#),
     );
 
     svg
 }
-
 
 struct Server {
     world: MathWorld,
@@ -442,9 +442,7 @@ fn main() -> io::Result<()> {
         let response = match serde_json::from_str::<Request>(&line) {
             Ok(request) => server.handle(request),
 
-            Err(error) => {
-                Response::internal_error(0, format!("invalid request JSON: {error}"))
-            }
+            Err(error) => Response::internal_error(0, format!("invalid request JSON: {error}")),
         };
 
         write_response(&mut writer, &response)?;

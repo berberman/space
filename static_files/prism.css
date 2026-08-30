@@ -3,7 +3,7 @@ code[class*="language-"],
 pre[class*="language-"],
 pre:has(> code[class*="language-"]) {
   color: var(--code-text, #2d3033);
-  background: none;
+  background: var(--code-surface, #fbfbf8);
   font-family: var(--verso-code-font-family, "SFMono-Regular", Consolas, monospace);
   font-size: var(--code-block-font-size, 0.92rem);
   line-height: 1.6;
@@ -19,10 +19,14 @@ pre:has(> code[class*="language-"]) {
 pre[class*="language-"],
 pre:has(> code[class*="language-"]) {
   width: 100%;
-  max-width: var(--content-width, 48rem);
+  max-width: min(100%, var(--prose-width, 45rem));
+  min-width: 0;
   margin: 1.5rem auto;
   padding: 1.15rem 1rem 1rem;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--code-border, #d4d2ca);
   border-radius: var(--radius-md, 0.35rem);
   background: var(--code-surface, #fbfbf8);
@@ -131,8 +135,13 @@ pre[class*="language-"]::selection {
 div.code-toolbar {
   position: relative;
   width: 100%;
-  max-width: var(--content-width, 48rem);
+  max-width: min(100%, var(--prose-width, 45rem));
+  min-width: 0;
   margin: 1.5rem auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 div.code-toolbar > .toolbar {
@@ -140,10 +149,12 @@ div.code-toolbar > .toolbar {
   z-index: 10;
   top: 0.35rem;
   right: 0.45rem;
+  max-width: calc(100% - 0.9rem);
 }
 
 div.code-toolbar > pre[class*="language-"],
 div.code-toolbar > pre:has(> code[class*="language-"]) {
+  max-width: 100%;
   margin: 0;
 }
 
@@ -187,4 +198,96 @@ div.code-toolbar > .toolbar > .toolbar-item > span:focus,
 div.code-toolbar > .toolbar > .toolbar-item > span:hover {
   color: var(--page-accent-strong, #173f65);
   text-decoration: none;
+}
+
+:root[data-theme="dark"] code[class*="language-"],
+:root[data-theme="dark"] pre[class*="language-"],
+:root[data-theme="dark"] pre:has(> code[class*="language-"]) {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+:root[data-theme="dark"] code[class*="language-"] ::selection,
+:root[data-theme="dark"] code[class*="language-"]::selection,
+:root[data-theme="dark"] pre[class*="language-"] ::selection,
+:root[data-theme="dark"] pre[class*="language-"]::selection {
+  background: rgba(159, 168, 218, 0.28);
+}
+
+:root[data-theme="dark"] .token.cdata,
+:root[data-theme="dark"] .token.comment,
+:root[data-theme="dark"] .token.doctype,
+:root[data-theme="dark"] .token.prolog {
+  color: rgba(255, 255, 255, 0.60);
+}
+
+:root[data-theme="dark"] .token.punctuation,
+:root[data-theme="dark"] .token.operator {
+  color: rgba(255, 255, 255, 0.70);
+}
+
+:root[data-theme="dark"] .token.boolean,
+:root[data-theme="dark"] .token.constant,
+:root[data-theme="dark"] .token.deleted,
+:root[data-theme="dark"] .token.number,
+:root[data-theme="dark"] .token.property,
+:root[data-theme="dark"] .token.symbol,
+:root[data-theme="dark"] .token.tag {
+  color: #ffb74d;
+}
+
+:root[data-theme="dark"] .token.attr-name,
+:root[data-theme="dark"] .token.builtin,
+:root[data-theme="dark"] .token.char,
+:root[data-theme="dark"] .token.inserted,
+:root[data-theme="dark"] .token.selector,
+:root[data-theme="dark"] .token.string {
+  color: #81c784;
+}
+
+:root[data-theme="dark"] .language-css .token.string,
+:root[data-theme="dark"] .style .token.string,
+:root[data-theme="dark"] .token.entity,
+:root[data-theme="dark"] .token.url {
+  color: #80cbc4;
+}
+
+:root[data-theme="dark"] .token.atrule,
+:root[data-theme="dark"] .token.attr-value,
+:root[data-theme="dark"] .token.keyword {
+  color: #9fa8da;
+}
+
+:root[data-theme="dark"] .token.class-name,
+:root[data-theme="dark"] .token.function {
+  color: #90caf9;
+}
+
+:root[data-theme="dark"] .token.important,
+:root[data-theme="dark"] .token.regex,
+:root[data-theme="dark"] .token.variable {
+  color: #ce93d8;
+}
+
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span {
+  background: #424242;
+  color: rgba(255, 255, 255, 0.70);
+}
+
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a:focus,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a:hover,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button:focus,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button:hover,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span:focus,
+:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span:hover {
+  color: #ff80ab;
+}
+
+@media (max-width: 599px) {
+  div.code-toolbar,
+  pre[class*="language-"],
+  pre:has(> code[class*="language-"]) {
+    max-width: 100%;
+  }
 }

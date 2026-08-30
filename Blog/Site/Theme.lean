@@ -71,7 +71,9 @@ def theme : Theme := { Theme.default with
            }}
           }}
         {{Footnotes.runSummary target summary}}
-        <a href={{target}} class="read-more">{{readMoreLabel}}</a>
+        <div class="archive-action-row">
+          <a href={{target}} class="read-more">{{readMoreLabel}}</a>
+        </div>
       </li>
     }}]
   postTemplate := do
@@ -128,6 +130,8 @@ def theme : Theme := { Theme.default with
                 data-emit-metadata="0"
                 data-input-position="bottom"
                 data-theme={{absoluteUrl "/static/giscus.css"}}
+                data-theme-light={{absoluteUrl "/static/giscus.css"}}
+                data-theme-dark={{absoluteUrl "/static/giscus-dark.css"}}
                 data-lang={{giscusLang}}
                 crossorigin="anonymous"
                 async>
@@ -177,6 +181,9 @@ def theme : Theme := { Theme.default with
           <meta charset="utf-8"/>
           <meta name="viewport" content="width=device-width, initial-scale=1"/>
           <title>{{ title }}</title>
+          <script>
+            {{ Html.text false "try{var t=localStorage.getItem('space-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}" }}
+          </script>
           {{ seoTags }}
           <link rel="stylesheet" href="https://fred-wang.github.io/MathFonts/NewComputerModern/mathfonts.css"/>
           <link rel="icon" type="image/x-icon" href={{faviconPath}}/>
@@ -186,21 +193,42 @@ def theme : Theme := { Theme.default with
           <link rel="stylesheet" href="/static/academic.css"/>
           <link href="/static/prism.css" rel="stylesheet" />
         </head>
-        <body>
-          <header class="site-header">
-            <div class="logo"><a href="/">"Space"</a></div>
-            {{ ← topNav }}
+        <body class="md2-app-shell">
+          <header class="site-header md2-app-bar">
+            <button class="md2-menu-button" type="button" aria-label="Open navigation" aria-controls="site-drawer" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+              </svg>
+            </button>
+            <a class="logo" href="/" aria-label="Space home">"Space"</a>
+            <div class="md2-desktop-nav" aria-label="Primary navigation">
+              {{ ← topNav }}
+            </div>
+            <button class="md2-theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false">
+              <svg class="md2-theme-toggle__icon md2-theme-toggle__icon--dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M9.37 5.51A7 7 0 0 0 18.5 14.63 7 7 0 1 1 9.37 5.51Z"/>
+              </svg>
+              <svg class="md2-theme-toggle__icon md2-theme-toggle__icon--light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-5.66 1.41-1.41M4.93 19.07l1.41-1.41m0-11.32L4.93 4.93m14.14 14.14-1.41-1.41M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
+              </svg>
+            </button>
           </header>
-          <main class={{mainClass}}>
-            {{ content }}
-            {{ catList }}
-            {{ postList }}
-          </main>
-          <footer>
-             "© 2020-2026 ❤"
-            <a href="https://github.com/berberman">"berberman"</a>
-            <a class="feed-link" href={{atomFeedPath}} aria-label="Atom feed"><img src={{feedIconPath}} alt="" aria-hidden="true"/>"Atom"</a>
-          </footer>
+          <aside id="site-drawer" class="md2-drawer" aria-label="Site navigation">
+            {{ ← topNav }}
+          </aside>
+          <button class="md2-drawer-scrim" type="button" aria-label="Close navigation"></button>
+          <div class="md2-app-content">
+            <main class={{mainClass}}>
+              {{ content }}
+              {{ postList }}
+              {{ catList }}
+            </main>
+            <footer>
+               "© 2020-2026 ❤"
+              <a href="https://github.com/berberman">"berberman"</a>
+              <a class="feed-link" href={{atomFeedPath}} aria-label="Atom feed"><img src={{feedIconPath}} alt="" aria-hidden="true"/>"Atom"</a>
+            </footer>
+          </div>
           <script src="/static/prism.js"></script>
           <script src="/static/section-sidebar.js"></script>
           <script src="/static/reading-ui.js"></script>

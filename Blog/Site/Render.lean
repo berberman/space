@@ -22,7 +22,10 @@ end Blog.HeadingLinks
 
 namespace Blog.Footnotes
 
-abbrev Note := Html
+structure Note where
+  name : String
+  body : Html
+
 abbrev M := StateM (Array Note)
 
 def isFootnote (name : String) (attrs : Array (String × String)) : Bool :=
@@ -35,8 +38,22 @@ def stripSummary : Html → Html
     | _ => .seq contents
   | html => html
 
-def ref (pagePath : String) (number : Nat) : Html :=
-  {{<sup id=s!"fnref-{number}" class="footnote-ref"><a href=s!"{pagePath}#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
+def summaryName? : Html → Option String
+  | .seq contents =>
+    match contents.toList with
+    | .tag "summary" _ summary :: _ => some <| htmlText "" (fun _ _ => false) summary
+    | _ => none
+  | _ => none
+
+def findNote? (name : String) (notes : Array Note) : Option Nat := do
+  let index ← notes.findIdx? (·.name == name)
+  return index + 1
+
+def ref (pagePath : String) (number : Nat) (withBackrefId : Bool := true) : Html :=
+  if withBackrefId then
+    {{<sup id=s!"fnref-{number}" class="footnote-ref"><a href=s!"{pagePath}#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
+  else
+    {{<sup class="footnote-ref"><a href=s!"{pagePath}#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
 
 def summaryRef (target : String) (number : Nat) : Html :=
   {{<sup class="footnote-ref"><a href=s!"{target}/#fn-{number}" aria-label=s!"Footnote {number}">{{toString number}}</a></sup>}}
@@ -45,8 +62,8 @@ def item (pagePath : String) (number : Nat) (body : Html) : Html :=
   {{<li id=s!"fn-{number}">{{body}} <a class="footnote-backref" href=s!"{pagePath}#fnref-{number}" aria-label=s!"Back to footnote {number} reference">"↩"</a></li>}}
 
 def items (pagePath : String) (notes : Array Note) : Array Html :=
-  notes.foldl (init := (#[], 1)) (fun (rendered, number) body =>
-    (rendered.push (item pagePath number body), number + 1)) |>.1
+  notes.foldl (init := (#[], 1)) (fun (rendered, number) note =>
+    (rendered.push (item pagePath number note.body), number + 1)) |>.1
 
 def renderSection (pagePath : String) (notes : Array Note) : Html :=
   {{<section id="footnotes" class="footnotes" aria-label="Footnotes"><hr/><ol>{{items pagePath notes}}</ol></section>}}
@@ -57,10 +74,13 @@ partial def collect (pagePath : String) : Html → M Html
   | .tag name attrs contents => do
     if isFootnote name attrs then
       let notes ← get
+      let noteName := summaryName? contents |>.getD (toString notes.size)
+      if let some number := findNote? noteName notes then
+        return ref pagePath number false
       let number := notes.size + 1
-      modify (·.push Html.empty)
+      modify (·.push { name := noteName, body := Html.empty })
       let body ← collect pagePath <| stripSummary contents
-      modify (·.set! (number - 1) body)
+      modify (·.set! (number - 1) { name := noteName, body })
       return ref pagePath number
     else
       return .tag name attrs (← collect pagePath contents)

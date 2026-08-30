@@ -1,4 +1,94 @@
 (function () {
+  var themeStorageKey = "space-theme";
+
+  function preferredTheme() {
+    var savedTheme;
+
+    try {
+      savedTheme = window.localStorage.getItem(themeStorageKey);
+      if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+    } catch (_error) {
+      savedTheme = null;
+    }
+
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  }
+
+  function giscusThemeUrl(theme) {
+    var giscus = document.querySelector("script[data-theme-light][data-theme-dark]");
+    return giscus ? giscus.getAttribute("data-theme-" + theme) : null;
+  }
+
+  function postGiscusTheme(theme, frame) {
+    var themeUrl = giscusThemeUrl(theme);
+    if (!themeUrl || !frame || !frame.contentWindow) return;
+
+    frame.contentWindow.postMessage(
+      { giscus: { setConfig: { theme: themeUrl } } },
+      "https://giscus.app"
+    );
+  }
+
+  function updateGiscusTheme(theme) {
+    document.querySelectorAll(".giscus-frame").forEach(function (frame) {
+      postGiscusTheme(theme, frame);
+    });
+  }
+
+  function observeGiscusTheme(theme) {
+    var comments = document.querySelector(".comments");
+    if (!comments || !("MutationObserver" in window)) return;
+
+    function configureFrame(frame) {
+      if (frame.dataset.themeControllerBound === "true") return;
+      frame.dataset.themeControllerBound = "true";
+      frame.addEventListener("load", function () {
+        postGiscusTheme(document.documentElement.dataset.theme, frame);
+      });
+      postGiscusTheme(theme, frame);
+    }
+
+    comments.querySelectorAll(".giscus-frame").forEach(configureFrame);
+    new MutationObserver(function () {
+      comments.querySelectorAll(".giscus-frame").forEach(configureFrame);
+    }).observe(comments, { childList: true, subtree: true });
+  }
+
+  function setupThemeController() {
+    var themeButton = document.querySelector(".md2-theme-toggle");
+
+    function applyTheme(theme) {
+      var dark = theme === "dark";
+      document.documentElement.dataset.theme = theme;
+
+      if (themeButton) {
+        themeButton.setAttribute("aria-pressed", String(dark));
+        themeButton.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+      }
+
+      updateGiscusTheme(theme);
+    }
+
+    applyTheme(preferredTheme());
+    observeGiscusTheme(document.documentElement.dataset.theme);
+
+    if (!themeButton) return;
+
+    themeButton.addEventListener("click", function () {
+      var nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      try {
+        window.localStorage.setItem(themeStorageKey, nextTheme);
+      } catch (_error) {
+        themeButton.dataset.storageUnavailable = "true";
+      }
+      applyTheme(nextTheme);
+    });
+  }
+
+  setupThemeController();
+
   function normalizePath(pathname) {
     if (!pathname) return "/";
     var normalized = pathname.replace(/\/+$/, "");
@@ -33,6 +123,96 @@
   }
 
   markCurrentTopNav();
+
+  function setupDrawer() {
+    var menuButton = document.querySelector(".md2-menu-button");
+    var drawer = document.querySelector(".md2-drawer");
+    var scrim = document.querySelector(".md2-drawer-scrim");
+
+    if (!menuButton || !drawer || !scrim || !window.matchMedia) return;
+
+    var desktop = window.matchMedia("(min-width: 1024px)");
+    function setExpanded(open) {
+      menuButton.setAttribute("aria-expanded", String(open));
+    }
+
+    function setButtonLabel(label) {
+      menuButton.setAttribute("aria-label", label);
+    }
+
+    function syncDrawerButton() {
+      setExpanded(isOpen());
+      setButtonLabel(isOpen() ? "Close navigation" : "Open navigation");
+    }
+
+    function isOpen() {
+      return document.body.classList.contains("md2-drawer-open");
+    }
+
+    function closeDrawer(restoreFocus) {
+      if (!isOpen()) return;
+
+      document.body.classList.remove("md2-drawer-open");
+      syncDrawerButton();
+
+      if (restoreFocus && !desktop.matches) {
+        menuButton.focus();
+      }
+    }
+
+    function openDrawer() {
+      if (desktop.matches) return;
+
+      document.body.classList.add("md2-drawer-open");
+      syncDrawerButton();
+
+      var firstLink = drawer.querySelector("a[href]");
+      if (firstLink) {
+        firstLink.focus();
+      }
+    }
+
+    menuButton.addEventListener("click", function () {
+      if (isOpen()) {
+        closeDrawer(true);
+      } else {
+        openDrawer();
+      }
+    });
+
+    scrim.addEventListener("click", function () {
+      closeDrawer(true);
+    });
+
+    drawer.querySelectorAll("a[href]").forEach(function (link) {
+      link.addEventListener("click", function () {
+        closeDrawer(false);
+      });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        closeDrawer(true);
+      }
+    });
+
+    function handleBreakpointChange() {
+      if (desktop.matches) {
+        closeDrawer(false);
+      }
+      syncDrawerButton();
+    }
+
+    if (desktop.addEventListener) {
+      desktop.addEventListener("change", handleBreakpointChange);
+    } else {
+      desktop.addListener(handleBreakpointChange);
+    }
+
+    handleBreakpointChange();
+  }
+
+  setupDrawer();
 
   var sidebar = document.querySelector(".section-sidebar");
   if (!sidebar) return;

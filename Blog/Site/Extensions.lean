@@ -3,9 +3,134 @@ import Verso.Doc.ArgParse
 import Verso.Doc.Elab
 import Verso.Parser
 
+import Blog.Site.Basic
 import Blog.Site.Typst
 
 open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser Template
+
+namespace Blog.OgImage
+
+structure Config where
+  url : String
+  alt : String
+  width : Option Nat := none
+  height : Option Nat := none
+  mimeType : Option String := none
+deriving ToJson, FromJson
+
+def marker (cfg : Config) : Html :=
+  .tag "span" (#[("class", "blog-og-image"), ("data-url", cfg.url), ("data-alt", cfg.alt)] ++
+    (cfg.width.map fun width => [("data-width", toString width)]).getD [] ++
+    (cfg.height.map fun height => [("data-height", toString height)]).getD [] ++
+    (cfg.mimeType.map fun mimeType => [("data-type", mimeType)]).getD []) Html.empty
+
+block_component ogImageMarker (cfg : Config) where
+  toHtml _id _data _goI _goB _contents := pure <| marker cfg
+
+section
+
+variable [Monad m] [MonadError m]
+
+def Config.parse : ArgParse m Config :=
+  Config.mk <$>
+    .positional `url .string <*>
+    .positional `alt .string <*>
+    .named `width .nat true <*>
+    .named `height .nat true <*>
+    .named `type .string true
+
+instance : FromArgs Config m := ⟨Config.parse⟩
+
+end
+
+
+end Blog.OgImage
+
+namespace Blog.Afilmory
+
+structure Config where
+  photoId : String
+  width : Nat
+  height : Nat
+  embedWidth : String := "100%"
+  useAsOgImage : Bool := false
+  alt : String := "Afilmory photo"
+deriving ToJson, FromJson
+
+def thumbnailUrl (photoId : String) : String :=
+  s!"{Blog.SiteConfig.afilmoryBaseUrl}/thumbnails/{photoId}.jpg"
+
+block_component afilmoryEmbed (cfg : Config) where
+  toHtml _id _data _goI _goB _contents := do
+    let aspect := s!"{cfg.width}:{cfg.height}"
+    let embedScriptUrl := s!"{Blog.SiteConfig.afilmoryBaseUrl}/share/embed.js"
+    let ogMarker := if cfg.useAsOgImage then
+        Blog.OgImage.marker {
+          url := thumbnailUrl cfg.photoId
+          alt := cfg.alt
+          mimeType := some "image/jpeg"
+        }
+      else
+        Html.empty
+    pure <| ogMarker ++ {{
+      <div class="afilmory-embed">
+        <script async src={{embedScriptUrl}}
+                data-afilmory-photo={{cfg.photoId}}
+                data-aspect={{aspect}}
+                data-width={{cfg.embedWidth}}></script>
+      </div>
+    }}
+
+section
+
+variable [Monad m] [MonadError m]
+
+def Config.parse : ArgParse m Config :=
+  Config.mk <$>
+    .positional `photo .string <*>
+    .positional `width .nat <*>
+    .positional `height .nat <*>
+    .namedD `embedWidth .string "100%" <*>
+    .flag `og true <*>
+    .namedD `alt .string "Afilmory photo"
+
+instance : FromArgs Config m := ⟨Config.parse⟩
+
+end
+
+
+end Blog.Afilmory
+
+namespace Verso.Genre.Blog
+
+@[directive]
+def ogImage : DirectiveExpanderOf _root_.Blog.OgImage.Config
+  | cfg, contents => do
+    if h : contents.size > 0 then
+      logErrorAt contents[0] "Expected no contents"
+    ``(_root_.Blog.OgImage.ogImageMarker
+      (_root_.Blog.OgImage.Config.mk
+        $(quote cfg.url)
+        $(quote cfg.alt)
+        $(quote cfg.width)
+        $(quote cfg.height)
+        $(quote cfg.mimeType)) #[])
+
+@[directive]
+def afilmory : DirectiveExpanderOf _root_.Blog.Afilmory.Config
+  | cfg, contents => do
+    if h : contents.size > 0 then
+      logErrorAt contents[0] "Expected no contents"
+    ``(_root_.Blog.Afilmory.afilmoryEmbed
+      (_root_.Blog.Afilmory.Config.mk
+        $(quote cfg.photoId)
+        $(quote cfg.width)
+        $(quote cfg.height)
+        $(quote cfg.embedWidth)
+        $(quote cfg.useAsOgImage)
+        $(quote cfg.alt)) #[])
+
+end Verso.Genre.Blog
 
 namespace Blog.Table
 

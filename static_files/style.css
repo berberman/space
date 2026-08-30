@@ -201,6 +201,16 @@ iframe {
   max-width: 100%;
 }
 
+.afilmory-embed {
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--space-6) auto;
+}
+
+.afilmory-embed iframe {
+  margin-inline: auto;
+}
+
 article> :first-child,
 main> :first-child {
   margin-top: 0;

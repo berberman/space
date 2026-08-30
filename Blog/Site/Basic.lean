@@ -57,6 +57,8 @@ def faviconPath : String := "/static/favicon.ico"
 
 def feedIconPath : String := "/static/rss.svg"
 
+def afilmoryBaseUrl : String := "https://afilmory.torus.icu"
+
 /- We don't record timestamp on each post, so just use 12 AM -/
 def atomTimestamp (date : Date) : String := s!"{date.toIso8601String}T00:00:00Z"
 

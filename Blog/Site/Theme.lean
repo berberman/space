@@ -163,12 +163,14 @@ def theme : Theme := { Theme.default with
         </section>
       }}
     let title ← param (α := String) "title"
-    let content ← param (α := Html) "content"
+    let rawPageContent ← param (α := Html) "content"
+    let ogImage? := Blog.SEO.imageFromHtml rawPageContent
+    let content := Blog.SEO.stripImageMarkers rawPageContent
     let description := Blog.SEO.descriptionFromHtml content
     let canonical := canonicalUrl path
     let mainClass := mainClassForPath path
     let metadata? ← param? (α := Post.PartMetadata) "metadata"
-    let seoTags := Blog.SEO.metaTags title description canonical metadata?
+    let seoTags := Blog.SEO.metaTags title description canonical metadata? ogImage?
     return {{
       <html lang={{htmlLang}}>
         <head>

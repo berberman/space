@@ -6,7 +6,8 @@ open Verso Genre Blog
 %%%
 
 Hi! I'm berberman. I'm a second-year PhD student
-in Computer Science and Engineering at [UC Santa Cruz](https://www.ucsc.edu/).
+in Computer Science and Engineering at [UC Santa Cruz](https://www.ucsc.edu/),
+advised by [Kyle Miller](https://kmill.github.io/).
 I'm interested in programming languages and interactive theorem proving,
 with a particular focus on the implementation of [Lean 4](https://lean-lang.org/)
 and its applications to formalization and verification.

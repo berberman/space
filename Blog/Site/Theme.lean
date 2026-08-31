@@ -119,22 +119,8 @@ def theme : Theme := { Theme.default with
       {{ sidebar }}
       {{ content }}
       <section class="comments" aria-label="Comments">
-        <script src="https://giscus.app/client.js"
-                data-repo="berberman/space"
-                data-repo-id="MDEwOlJlcG9zaXRvcnkzMDc2NTQ0Njg="
-                data-category="Announcements"
-                data-category-id="DIC_kwDOElZvRM4C__Y6"
-                data-mapping="title"
-                data-strict="0"
-                data-reactions-enabled="1"
-                data-emit-metadata="0"
-                data-input-position="bottom"
-                data-theme={{absoluteUrl "/static/giscus.css"}}
-                data-theme-light={{absoluteUrl "/static/giscus.css"}}
-                data-theme-dark={{absoluteUrl "/static/giscus-dark.css"}}
-                data-lang={{giscusLang}}
-                crossorigin="anonymous"
-                async>
+        <script>
+          {{ Html.text false s!"var s=document.createElement('script'),t=document.documentElement.dataset.theme,l='{absoluteUrl "/static/giscus.css"}',d='{absoluteUrl "/static/giscus-dark.css"}';s.src='https://giscus.app/client.js';s.setAttribute('data-repo','berberman/space');s.setAttribute('data-repo-id','MDEwOlJlcG9zaXRvcnkzMDc2NTQ0Njg=');s.setAttribute('data-category','Announcements');s.setAttribute('data-category-id','DIC_kwDOElZvRM4C__Y6');s.setAttribute('data-mapping','title');s.setAttribute('data-strict','0');s.setAttribute('data-reactions-enabled','1');s.setAttribute('data-emit-metadata','0');s.setAttribute('data-input-position','bottom');s.setAttribute('data-theme-light',l);s.setAttribute('data-theme-dark',d);s.setAttribute('data-theme',t==='dark'?d:l);s.setAttribute('data-lang','{giscusLang}');s.setAttribute('crossorigin','anonymous');s.async=true;document.currentScript.parentElement.appendChild(s)" }}
         </script>
       </section>
     }}

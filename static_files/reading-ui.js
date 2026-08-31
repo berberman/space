@@ -5,13 +5,11 @@
   var ticking = false;
   var lastY = window.scrollY || window.pageYOffset || 0;
   var control = document.createElement("button");
-  var percent;
 
   control.type = "button";
   control.className = "reading-progress";
-  control.setAttribute("aria-label", "Back to top, 0% read");
-  control.innerHTML = '<span class="reading-progress__percent">0%</span>';
-  percent = control.querySelector(".reading-progress__percent");
+  control.setAttribute("aria-label", "Back to top");
+  control.innerHTML = '<svg class="reading-progress__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.59 5.58L20 12l-8-8-8 8z"/></svg>';
   document.body.appendChild(control);
 
   function scrollY() {
@@ -44,12 +42,10 @@
     var pastIntro = currentY > 96;
 
     if (header) {
-      header.classList.toggle("is-scrolled", currentY > 8);
+      header.style.setProperty("--reading-progress", String(progress / 100));
     }
 
     control.classList.toggle("is-visible", pageScrollable && pastIntro && scrollingUp);
-    percent.textContent = `${progress}%`;
-    control.setAttribute("aria-label", `Back to top, ${progress}% read`);
     lastY = currentY;
 
     ticking = false;

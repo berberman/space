@@ -1,6 +1,7 @@
 @import url("./giscus.css");
 
-:root {
+:root,
+main {
   color-scheme: dark;
   --color-prettylights-syntax-comment: rgba(255, 255, 255, 0.60);
   --color-prettylights-syntax-constant: #9fa8da;
@@ -81,7 +82,95 @@
   --color-danger-subtle: rgba(255, 138, 128, 0.14);
   --color-primer-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --color-scale-gray-1: #424242;
+  --color-scale-gray-7: #424242;
   --color-scale-blue-1: rgba(159, 168, 218, 0.16);
+  --color-scale-blue-8: rgba(159, 168, 218, 0.24);
+
+  --color-social-reaction-bg-hover: var(--color-scale-gray-7);
+  --color-social-reaction-bg-reacted-hover: var(--color-scale-blue-8);
+}
+
+.gsc-main,
+.gsc-comments,
+.gsc-header,
+.gsc-left-header,
+.gsc-right-header,
+.gsc-no-comments,
+.gsc-loading,
+.gsc-error,
+.gsc-signin-prompt {
+  background: var(--color-canvas-default);
+  color: var(--color-fg-muted);
+}
+
+.gsc-comment-box,
+.gsc-comment,
+.gsc-reactions,
+.gsc-reply-box,
+.gsc-reactions-popover {
+  background: var(--color-canvas-subtle);
+  border-color: var(--color-border-default);
+  color: var(--color-fg-default);
+}
+
+.gsc-comment-box-main,
+.gsc-reply-box-main,
+.gsc-comment-box-write,
+.gsc-comment-box-preview,
+.gsc-comment-box-textarea-extras,
+.gsc-comment-box-buttons,
+.gsc-reply-box-write,
+.gsc-reply-box-preview,
+.gsc-reply-box-textarea-extras,
+.gsc-reply-box-buttons,
+.gsc-comment-box-bottom,
+.gsc-reply-box-bottom {
+  background: var(--color-canvas-subtle);
+}
+
+.gsc-comment-box-tabs,
+.gsc-reply-box-tabs,
+.gsc-comment-box-tab[aria-selected="true"],
+.gsc-reply-box-tab[aria-selected="true"] {
+  background: var(--color-canvas-overlay);
+}
+
+.gsc-comment-box-textarea,
+.gsc-reply-box-textarea {
+  background: var(--color-canvas-inset);
+  color: var(--color-fg-default);
+}
+
+.gsc-comments-count,
+.gsc-comments-count-separator,
+.gsc-replies-count,
+.gsc-reactions-count,
+.gsc-reply-count,
+.gsc-comment-created-at,
+.gsc-social-reaction-summary-item,
+.gsc-reaction-button,
+.gsc-reactions-button {
+  color: var(--color-fg-muted);
+}
+
+.gsc-comments-count a,
+.gsc-replies-count a,
+.gsc-reactions-count a {
+  color: var(--color-accent-fg);
+}
+
+.gsc-social-reaction-summary-item,
+.gsc-reaction-button,
+.gsc-reactions-button {
+  background: var(--color-canvas-subtle);
+  border-color: var(--color-border-default);
+}
+
+.gsc-social-reaction-summary-item:hover,
+.gsc-reaction-button:hover,
+.gsc-reactions-button:hover {
+  background: var(--color-social-reaction-bg-hover);
+  color: var(--color-fg-default);
 }
 
 .gsc-comment-content code,

@@ -2,7 +2,8 @@
  * Based on GitHub Primer color variables used by giscus themes.
  */
 
-:root {
+:root,
+main {
   --color-prettylights-syntax-comment: rgba(0, 0, 0, 0.54);
   --color-prettylights-syntax-constant: #303f9f;
   --color-prettylights-syntax-entity: #c51162;
@@ -91,6 +92,7 @@
 }
 
 .gsc-main {
+  background: var(--color-canvas-default);
   color: var(--color-fg-default);
   font-family: "Roboto", "Noto Sans SC", "Noto Sans", Arial, sans-serif;
 }
@@ -98,6 +100,7 @@
 .gsc-comment-box,
 .gsc-comment,
 .gsc-reactions,
+.gsc-comments,
 .gsc-timeline {
   border-color: var(--color-border-default);
 }
@@ -105,6 +108,7 @@
 .gsc-comment-box,
 .gsc-comment,
 .gsc-reactions,
+.gsc-comments,
 .gsc-reply-box {
   background: var(--color-canvas-default);
 }
@@ -175,24 +179,44 @@
   border-radius: 4px;
 }
 
+.gsc-header,
+.gsc-left-header,
+.gsc-right-header {
+  background: var(--color-canvas-default);
+}
+
 .gsc-social-reaction-summary-item,
 .gsc-reaction-button,
+.gsc-reactions-button,
+.gsc-reactions-popover,
 .gsc-comment-reactions .gsc-social-reaction-summary-item {
   background: var(--color-canvas-default);
   border-color: var(--color-border-default);
+  color: var(--color-fg-muted);
 }
 
 .gsc-social-reaction-summary-item:hover,
-.gsc-reaction-button:hover {
+.gsc-reaction-button:hover,
+.gsc-reactions-button:hover {
   background: var(--color-social-reaction-bg-hover);
+  color: var(--color-fg-default);
 }
 
 .gsc-header,
 .gsc-comment-author,
 .gsc-comment-created-at,
+.gsc-comments-count,
+.gsc-comments-count-separator,
+.gsc-replies-count,
 .gsc-reactions-count,
 .gsc-reply-count {
   color: var(--color-fg-muted);
+}
+
+.gsc-comments-count a,
+.gsc-replies-count a,
+.gsc-reactions-count a {
+  color: var(--color-accent-fg);
 }
 
 .gsc-comment-content {

@@ -4,6 +4,7 @@ import Verso.Doc.Elab
 import Verso.Parser
 
 import Blog.Site.Basic
+import Blog.Site.LeanRecall
 import Blog.Site.Typst
 
 open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser Template

@@ -64,7 +64,7 @@ main {
   --color-fg-subtle: rgba(255, 255, 255, 0.50);
   --color-canvas-default: #303030;
   --color-canvas-overlay: #424242;
-  --color-canvas-inset: #212121;
+  --color-canvas-inset: #424242;
   --color-canvas-subtle: #424242;
   --color-border-default: rgba(255, 255, 255, 0.12);
   --color-border-muted: rgba(255, 255, 255, 0.08);
@@ -109,6 +109,7 @@ main {
 .gsc-reply-box,
 .gsc-reactions-popover {
   background: var(--color-canvas-subtle);
+  background-color: var(--color-canvas-subtle);
   border-color: var(--color-border-default);
   color: var(--color-fg-default);
 }
@@ -126,6 +127,7 @@ main {
 .gsc-comment-box-bottom,
 .gsc-reply-box-bottom {
   background: var(--color-canvas-subtle);
+  background-color: var(--color-canvas-subtle);
 }
 
 .gsc-comment-box-tabs,
@@ -138,7 +140,20 @@ main {
 .gsc-comment-box-textarea,
 .gsc-reply-box-textarea {
   background: var(--color-canvas-inset);
+  background-color: var(--color-canvas-inset);
   color: var(--color-fg-default);
+}
+
+.gsc-comment-box-textarea:focus,
+.gsc-reply-box-textarea:focus,
+.input-contrast,
+.input-contrast:focus {
+  background-color: var(--color-canvas-inset) !important;
+}
+
+.gsc-comment-box-textarea::placeholder,
+.gsc-reply-box-textarea::placeholder {
+  color: var(--color-fg-subtle);
 }
 
 .gsc-comments-count,

@@ -144,7 +144,7 @@ inductive Alignment where
   | left
   | center
   | right
-deriving ToJson, FromJson, DecidableEq, Repr, Ord
+deriving ToJson, FromJson, DecidableEq, Repr, Ord, Quote
 
 def Alignment.htmlClass : Alignment → String
   | .left => "blog-table--left"
@@ -154,7 +154,7 @@ def Alignment.htmlClass : Alignment → String
 structure Config where
   header : Bool := false
   alignment : Option Alignment := none
-deriving ToJson, FromJson
+deriving ToJson, FromJson, Quote
 
 structure CellRange where
   startPos : String.Pos.Raw
@@ -171,8 +171,7 @@ def validateRows (ref : Syntax) (rows : Array (Array α)) : DocElabM Nat := do
   pure columns
 
 def mkTable (cfg : Config) (columns : Nat) (cells : Array Term) : DocElabM Term := do
-  let data := toJson (columns, cfg)
-  ``(Block.other (Blog.BlockExt.component `Blog.Table.blogTable $(quote data)) #[Block.ul #[$[Verso.Doc.ListItem.mk #[$cells]],*]])
+  ``(Block.other (Blog.BlockExt.component `Blog.Table.blogTable (toJson ($(quote columns), $(quote cfg)))) #[Block.ul #[$[Verso.Doc.ListItem.mk #[$cells]],*]])
 
 def parseRangeWith (p : ParserFn) (ref : Syntax) (startPos stopPos : String.Pos.Raw) : DocElabM Syntax := do
   let fileMap ← getFileMap

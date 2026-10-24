@@ -10,7 +10,7 @@ package «verso-blog» where
   ]
 
 require verso from git
-  "https://github.com/leanprover/verso.git" @ "v4.31.0"
+  "https://github.com/leanprover/verso.git" @ "v4.35.0"
 
 
 target typstRenderer pkg : System.FilePath := do

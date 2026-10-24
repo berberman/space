@@ -1,8 +1,13 @@
 import VersoBlog
 import Blog.Site.Extensions
 import Blog.Categories
+import Verso.Code.External
 
 open Verso Genre Blog
+open Verso.Code.External
+
+set_option verso.exampleProject "Subprojects/NestedInductives"
+set_option verso.exampleModule "NestedInductives"
 
 #doc (Post) "The Recent Kernel Soundness Bug and Nested Inductive Types" =>
 
@@ -177,22 +182,21 @@ inductive Tree (α : Type) where
 ```
 
 ```leanOutput Tree.rec
-recursor Tree.rec.{u} : {α : Type} →
-  {motive_1 : Tree α → Sort u} →
-    {motive_2 : List (Tree α) → Sort u} →
-      ((value : α) → motive_1 (Tree.leaf value)) →
-        ((children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) →
-          motive_2 [] →
-            ((head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail)) →
-              (t : Tree α) → motive_1 t
-number of parameters: 1
+recursor Tree.rec.{u} {α : Type} {motive_1 : Tree α → Sort u} {motive_2 : List (Tree α) → Sort u}
+  (leaf : (value : α) → motive_1 (Tree.leaf value))
+  (node : (children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) (nil : motive_2 [])
+  (cons : (head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail))
+  (t : Tree α) : motive_1 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for Tree.leaf (1 fields): fun α motive_1 motive_2 leaf node nil cons value => leaf value
-for Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =>
-  node children (Tree.rec_1 leaf node nil cons children)
+  Tree.rec leaf node nil cons (Tree.leaf value)
+    ==> leaf value
+  Tree.rec leaf node nil cons (Tree.node children)
+    ==> node children (Tree.rec_1 leaf node nil cons children)
 ```
 
 这里有两个 motive 分别对应正常的 `Tree α` 以及嵌套的 `List (Tree α)`。
@@ -203,22 +207,21 @@ for Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =
 ```
 
 ```leanOutput Tree.rec_1
-recursor Tree.rec_1.{u} : {α : Type} →
-  {motive_1 : Tree α → Sort u} →
-    {motive_2 : List (Tree α) → Sort u} →
-      ((value : α) → motive_1 (Tree.leaf value)) →
-        ((children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) →
-          motive_2 [] →
-            ((head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail)) →
-              (t : List (Tree α)) → motive_2 t
-number of parameters: 1
+recursor Tree.rec_1.{u} {α : Type} {motive_1 : Tree α → Sort u} {motive_2 : List (Tree α) → Sort u}
+  (leaf : (value : α) → motive_1 (Tree.leaf value))
+  (node : (children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) (nil : motive_2 [])
+  (cons : (head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail))
+  (t : List (Tree α)) : motive_2 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for List.nil (0 fields): fun α motive_1 motive_2 leaf node nil cons => nil
-for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail =>
-  cons head tail (Tree.rec leaf node nil cons head) (Tree.rec_1 leaf node nil cons tail)
+  Tree.rec_1 leaf node nil cons []
+    ==> nil
+  Tree.rec_1 leaf node nil cons (head :: tail)
+    ==> cons head tail (Tree.rec leaf node nil cons head) (Tree.rec_1 leaf node nil cons tail)
 ```
 
 对比一下它们就会发现除了 major premise 以及最后的 conclusion 外它们形状是完全一致的。
@@ -229,118 +232,118 @@ for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail 
 对着辅助类型生成 recursor 之后再把其中提到辅助类型的地方重命名回来。
 最后扔掉辅助类型定义，只保留辅助 recursor 添加到原来的类型上。
 
-具体来说这个例子手动翻译一下就是：
+具体来说这个例子手动翻译一下就是（`_nested` 是 kernel 保留的前缀，这里使用 `Nested` 命名空间）：
 
 
 ```lean e
 mutual
 
-inductive _nested.Tree (α : Type) where
-  | leaf (valie : α) : _nested.Tree α
-  | node (children : _nested.Tree α) : _nested.Tree α
+inductive Nested.Tree (α : Type) where
+  | leaf (value : α) : Nested.Tree α
+  | node (children : Nested.List_1 α) : Nested.Tree α
 
-inductive _nested.List_1 (α : Type) where
-  | nil : _nested.List_1 α
-  | cons (head : _nested.Tree α)  (tail : _nested.List_1 α) : _nested.List_1 α
+inductive Nested.List_1 (α : Type) where
+  | nil : Nested.List_1 α
+  | cons (head : Nested.Tree α)  (tail : Nested.List_1 α) : Nested.List_1 α
 
 end
 ```
 
 `Tree` 定义中发生的嵌套字段是 `node` 构造器中的 `List (Tree α)`。这里 `Tree α` 是 `List` 的 inductive parameter。
-所以创建的辅助类型 `_nested.List_1` 就是特化的 `List`——`List (Tree α)`，其包含 `List` 的所有构造器
-并把 `α` 替换为 `_nested.Tree`。
+所以创建的辅助类型 `Nested.List_1` 就是特化的 `List`——`List (Tree α)`，其包含 `List` 的所有构造器
+并把元素类型替换为 `Nested.Tree α`。
 
-我们来对比一下手动翻译之后 `_nested.Tree.rec` 的 recursor 和之前的 `Tree.rec` ：
+我们来对比一下手动翻译之后 `Nested.Tree.rec` 的 recursor 和之前的 `Tree.rec` ：
 
 ```lean e (name := nestedTree.rec)
-#print _nested.Tree.rec
+#print Nested.Tree.rec
 ```
 
 ```leanOutput nestedTree.rec
-recursor _nested.Tree.rec.{u} : {α : Type} →
-  {motive_1 : _nested.Tree α → Sort u} →
-    {motive_2 : _nested.List_1 α → Sort u} →
-      ((valie : α) → motive_1 (_nested.Tree.leaf valie)) →
-        ((children : _nested.Tree α) → motive_1 children → motive_1 children.node) →
-          motive_2 _nested.List_1.nil →
-            ((head : _nested.Tree α) →
-                (tail : _nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (_nested.List_1.cons head tail)) →
-              (t : _nested.Tree α) → motive_1 t
-number of parameters: 1
+recursor Nested.Tree.rec.{u} {α : Type} {motive_1 : Nested.Tree α → Sort u} {motive_2 : Nested.List_1 α → Sort u}
+  (leaf : (value : α) → motive_1 (Nested.Tree.leaf value))
+  (node : (children : Nested.List_1 α) → motive_2 children → motive_1 (Nested.Tree.node children))
+  (nil : motive_2 Nested.List_1.nil)
+  (cons :
+    (head : Nested.Tree α) →
+      (tail : Nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (Nested.List_1.cons head tail))
+  (t : Nested.Tree α) : motive_1 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for _nested.Tree.leaf (1 fields): fun α motive_1 motive_2 leaf node nil cons valie => leaf valie
-for _nested.Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =>
-  node children (_nested.Tree.rec leaf node nil cons children)
+  Nested.Tree.rec leaf node nil cons (Nested.Tree.leaf value)
+    ==> leaf value
+  Nested.Tree.rec leaf node nil cons (Nested.Tree.node children)
+    ==> node children (Nested.List_1.rec leaf node nil cons children)
 ```
 
 ```leanOutput Tree.rec
-recursor Tree.rec.{u} : {α : Type} →
-  {motive_1 : Tree α → Sort u} →
-    {motive_2 : List (Tree α) → Sort u} →
-      ((value : α) → motive_1 (Tree.leaf value)) →
-        ((children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) →
-          motive_2 [] →
-            ((head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail)) →
-              (t : Tree α) → motive_1 t
-number of parameters: 1
+recursor Tree.rec.{u} {α : Type} {motive_1 : Tree α → Sort u} {motive_2 : List (Tree α) → Sort u}
+  (leaf : (value : α) → motive_1 (Tree.leaf value))
+  (node : (children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) (nil : motive_2 [])
+  (cons : (head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail))
+  (t : Tree α) : motive_1 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for Tree.leaf (1 fields): fun α motive_1 motive_2 leaf node nil cons value => leaf value
-for Tree.node (1 fields): fun α motive_1 motive_2 leaf node nil cons children =>
-  node children (Tree.rec_1 leaf node nil cons children)
+  Tree.rec leaf node nil cons (Tree.leaf value)
+    ==> leaf value
+  Tree.rec leaf node nil cons (Tree.node children)
+    ==> node children (Tree.rec_1 leaf node nil cons children)
 ```
 
-以及辅助类型 `_nested.List_1` 的 recursor 和 `Tree` 的辅助 recursor：
+以及辅助类型 `Nested.List_1` 的 recursor 和 `Tree` 的辅助 recursor：
 
 ```lean e (name := nested.List_1.rec)
-#print _nested.List_1.rec
+#print Nested.List_1.rec
 ```
 
 ```leanOutput nested.List_1.rec
-recursor _nested.List_1.rec.{u} : {α : Type} →
-  {motive_1 : _nested.Tree α → Sort u} →
-    {motive_2 : _nested.List_1 α → Sort u} →
-      ((valie : α) → motive_1 (_nested.Tree.leaf valie)) →
-        ((children : _nested.Tree α) → motive_1 children → motive_1 children.node) →
-          motive_2 _nested.List_1.nil →
-            ((head : _nested.Tree α) →
-                (tail : _nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (_nested.List_1.cons head tail)) →
-              (t : _nested.List_1 α) → motive_2 t
-number of parameters: 1
+recursor Nested.List_1.rec.{u} {α : Type} {motive_1 : Nested.Tree α → Sort u} {motive_2 : Nested.List_1 α → Sort u}
+  (leaf : (value : α) → motive_1 (Nested.Tree.leaf value))
+  (node : (children : Nested.List_1 α) → motive_2 children → motive_1 (Nested.Tree.node children))
+  (nil : motive_2 Nested.List_1.nil)
+  (cons :
+    (head : Nested.Tree α) →
+      (tail : Nested.List_1 α) → motive_1 head → motive_2 tail → motive_2 (Nested.List_1.cons head tail))
+  (t : Nested.List_1 α) : motive_2 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for _nested.List_1.nil (0 fields): fun α motive_1 motive_2 leaf node nil cons => nil
-for _nested.List_1.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail =>
-  cons head tail (_nested.Tree.rec leaf node nil cons head) (_nested.List_1.rec leaf node nil cons tail)
+  Nested.List_1.rec leaf node nil cons Nested.List_1.nil
+    ==> nil
+  Nested.List_1.rec leaf node nil cons (Nested.List_1.cons head tail)
+    ==> cons head tail (Nested.Tree.rec leaf node nil cons head) (Nested.List_1.rec leaf node nil cons tail)
 ```
 
 ```leanOutput Tree.rec_1
-recursor Tree.rec_1.{u} : {α : Type} →
-  {motive_1 : Tree α → Sort u} →
-    {motive_2 : List (Tree α) → Sort u} →
-      ((value : α) → motive_1 (Tree.leaf value)) →
-        ((children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) →
-          motive_2 [] →
-            ((head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail)) →
-              (t : List (Tree α)) → motive_2 t
-number of parameters: 1
+recursor Tree.rec_1.{u} {α : Type} {motive_1 : Tree α → Sort u} {motive_2 : List (Tree α) → Sort u}
+  (leaf : (value : α) → motive_1 (Tree.leaf value))
+  (node : (children : List (Tree α)) → motive_2 children → motive_1 (Tree.node children)) (nil : motive_2 [])
+  (cons : (head : Tree α) → (tail : List (Tree α)) → motive_1 head → motive_2 tail → motive_2 (head :: tail))
+  (t : List (Tree α)) : motive_2 t
+number of parameters: 1 (position 1)
+number of motives: 2 (positions 2–3)
+number of minor premises: 4 (positions 4–7)
 number of indices: 0
-number of motives: 2
-number of minors: 4
+major premise position: 8
 rules:
-for List.nil (0 fields): fun α motive_1 motive_2 leaf node nil cons => nil
-for List.cons (2 fields): fun α motive_1 motive_2 leaf node nil cons head tail =>
-  cons head tail (Tree.rec leaf node nil cons head) (Tree.rec_1 leaf node nil cons tail)
+  Tree.rec_1 leaf node nil cons []
+    ==> nil
+  Tree.rec_1 leaf node nil cons (head :: tail)
+    ==> cons head tail (Tree.rec leaf node nil cons head) (Tree.rec_1 leaf node nil cons tail)
 ```
 
-它们几乎是完全能对应上的——并且所有 `_nested.List_1 α` 都被还原回了 `List (Tree α)`。
+它们几乎是完全能对应上的——并且所有 `Nested.List_1 α` 都被还原回了 `List (Tree α)`。
 辅助类型的 recursor 成了原来类型的辅助 recursor，其中特化的辅助类型被替换回了原来类型中发生嵌套的那个 inductive type 应用到
 原来类型上。
 
@@ -426,23 +429,26 @@ inductive T where
 ```
 
 ```leanOutput ver
-"4.31.0"
+"4.35.0"
 ```
 
 我们找一个老一点的 Lean 版本。
-Verso 支持这样加载不同版本的子项目，但是从其他项目产生 diagnostics 就没有 info tree 了，样式也会变得不好看。
+Verso 支持这样加载不同版本的子项目，并用 anchor 提取代码和 diagnostics。
 
-{leanExampleProject examples "Subprojects/NestedInductives"}
+```anchor version
+#eval Lean.versionString
+```
 
-{leanCommand examples version}
-
-```leanOutput version
+```anchorInfo version
 "4.29.0"
 ```
 
 现在我们定义 `Foo`，它有两个 inductive parameters:
 
-{leanCommand examples Foo}
+```anchor Foo
+inductive Foo (b : Bool) (α : Type) where
+  | mk (x : α) : Foo b α
+```
 
 接下来我们尝试定义嵌套了 `Foo` 的 `Bar`：
 
@@ -470,16 +476,33 @@ Foo (b : Bool) (α : Type) : Type
 
 为了绕过 elaborator，我们用一些简单的元编程直接构造并定义它：
 
-{leanCommand examples bug}
+```anchor bug
+elab "#bug" : command => Command.liftTermElabM do
+  let indType : InductiveType := {
+      name := `Bar
+      type := .sort 1
+      ctors := [
+        { name := `Bar.mk
+          type := ← mkArrow (mkApp2 (.const `Foo [])
+                    (mkNatLit 1) (.const `Bar [])) (.const `Bar []) }
+      ]
+    }
+  let decl := Declaration.inductDecl [] 0 [indType] false
+  addDecl decl
+```
 
-{leanCommand examples Bar}
+```anchor Bar
+#bug
+```
 
 `#bug` 执行成功——太坏了，这个东西通过了 kernel 的检查！
 打印一下 `Bar` 的 recursor 我们能清晰地看到 `Foo 1 Bar` 没有产生任何错误：
 
-{leanCommand examples Bar.rec}
+```anchor Bar.rec
+#print Bar.rec
+```
 
-```leanOutput Bar.rec (whitespace := lax)
+```anchorInfo Bar.rec
 recursor Bar.rec.{u} : {motive_1 : Bar → Sort u} →
   {motive_2 : Foo 1 Bar → Sort u} →
     ((x : Foo 1 Bar) → motive_2 x → motive_1 (Bar.mk x)) →
@@ -489,8 +512,7 @@ number of indices: 0
 number of motives: 2
 number of minors: 2
 rules:
-for Bar.mk (1 fields): fun motive_1 motive_2 mk mk_1 x =>
-  mk x (@Bar.rec_1 motive_1 motive_2 mk mk_1 x)
+for Bar.mk (1 fields): fun motive_1 motive_2 mk mk_1 x => mk x (@Bar.rec_1 motive_1 motive_2 mk mk_1 x)
 ```
 
 回顾之前的翻译流程，我们可以把辅助类型手动写出来：
@@ -614,10 +636,15 @@ inductive J where
 ```
 
 ```leanOutput private
-(kernel) constant has already been declared '_private.Blog.Scribbles.NestedInductive.0.I.mk'
+(kernel) constant has already been declared 'I.mk'
 ```
 
-乍一看这个错误意义不明，还把 `I.mk` 的全名漏出来了。
+旧版这里的报错是 `(kernel) constant has already been declared '_private.Blog.Scribbles.NestedInductive.0.I.mk'`。
+乍一看这个错误意义不明，还把 `I.mk` 带有私有前缀的全名漏出来了，正好能看到 kernel 实际撞到的是哪个名字。
+
+Lean 4.35 后，这里只显示 `I.mk` 了，因为 [#14771](https://github.com/leanprover/lean4/pull/14771)
+改了 {lean e}`Lean.Environment.ofKernelEnv`，kernel 报错的 pretty-printer 现在能找到这个构造器。
+之前因为查找失败，就直接显示了内部名字。 不过私有名字的内部表示还是没变，所以下面这个 nested inductive 翻译 bug 还在。
 
 具体发生的是：这里我们需要把 `I.mk` 改成 `I'.mk`——strip 掉前缀 `I` 然后加上 `I'`，
 但是因为私有定义现在 `I.mk` 的 全名是 `_private.Blog.Scribbles.NestedInductive.0.I.mk`，所以重命名操作就失败了。

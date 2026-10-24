@@ -1,18 +1,13 @@
-import SubVerso.Examples
 import Lean
 
-open SubVerso.Examples
 open Lean Meta Elab
 
-%example Foo
+-- ANCHOR: Foo
 inductive Foo (b : Bool) (α : Type) where
   | mk (x : α) : Foo b α
-%end
+-- ANCHOR_END: Foo
 
-%signature FooType
-  Foo (b : Bool) (α : Type) : Type
-
-%example bug
+-- ANCHOR: bug
 elab "#bug" : command => Command.liftTermElabM do
   let indType : InductiveType := {
       name := `Bar
@@ -25,16 +20,16 @@ elab "#bug" : command => Command.liftTermElabM do
     }
   let decl := Declaration.inductDecl [] 0 [indType] false
   addDecl decl
-%end
+-- ANCHOR_END: bug
 
-%example Bar
+-- ANCHOR: Bar
 #bug
-%end
+-- ANCHOR_END: Bar
 
-%example Bar.rec
+-- ANCHOR: Bar.rec
 #print Bar.rec
-%end
+-- ANCHOR_END: Bar.rec
 
-%example version
+-- ANCHOR: version
 #eval Lean.versionString
-%end
+-- ANCHOR_END: version

@@ -71,9 +71,7 @@ def theme : Theme := { Theme.default with
            }}
           }}
         {{Footnotes.runSummary target summary}}
-        <div class="archive-action-row">
-          <a href={{target}} class="read-more">{{readMoreLabel}}</a>
-        </div>
+        <a href={{target}} class="read-more">{{readMoreLabel}}</a>
       </li>
     }}]
   postTemplate := do
@@ -120,7 +118,7 @@ def theme : Theme := { Theme.default with
       {{ content }}
       <section class="comments" aria-label="Comments">
         <script>
-          {{ Html.text false s!"var s=document.createElement('script'),t=document.documentElement.dataset.theme,l='{absoluteUrl "/static/giscus.css?v=20260902"}',d='{absoluteUrl "/static/giscus-dark.css?v=20260902"}';s.src='https://giscus.app/client.js';s.setAttribute('data-repo','berberman/space');s.setAttribute('data-repo-id','MDEwOlJlcG9zaXRvcnkzMDc2NTQ0Njg=');s.setAttribute('data-category','Announcements');s.setAttribute('data-category-id','DIC_kwDOElZvRM4C__Y6');s.setAttribute('data-mapping','title');s.setAttribute('data-strict','0');s.setAttribute('data-reactions-enabled','1');s.setAttribute('data-emit-metadata','0');s.setAttribute('data-input-position','bottom');s.setAttribute('data-theme-light',l);s.setAttribute('data-theme-dark',d);s.setAttribute('data-theme',t==='dark'?d:l);s.setAttribute('data-lang','{giscusLang}');s.setAttribute('crossorigin','anonymous');s.async=true;document.currentScript.parentElement.appendChild(s)" }}
+          {{ Html.text false s!"var s=document.createElement('script'),t=document.documentElement.dataset.theme,l='{absoluteUrl "/static/giscus.css?v=20261023-2"}',d='{absoluteUrl "/static/giscus-dark.css?v=20261023-2"}';s.src='https://giscus.app/client.js';s.setAttribute('data-repo','berberman/space');s.setAttribute('data-repo-id','MDEwOlJlcG9zaXRvcnkzMDc2NTQ0Njg=');s.setAttribute('data-category','Announcements');s.setAttribute('data-category-id','DIC_kwDOElZvRM4C__Y6');s.setAttribute('data-mapping','title');s.setAttribute('data-strict','0');s.setAttribute('data-reactions-enabled','1');s.setAttribute('data-emit-metadata','0');s.setAttribute('data-input-position','bottom');s.setAttribute('data-theme-light',l);s.setAttribute('data-theme-dark',d);s.setAttribute('data-theme',t==='dark'?d:l);s.setAttribute('data-lang','{giscusLang}');s.setAttribute('crossorigin','anonymous');s.async=true;document.currentScript.parentElement.appendChild(s)" }}
         </script>
       </section>
     }}
@@ -179,42 +177,29 @@ def theme : Theme := { Theme.default with
           <link rel="stylesheet" href="/static/academic.css"/>
           <link href="/static/prism.css" rel="stylesheet" />
         </head>
-        <body class="md2-app-shell">
-          <header class="site-header md2-app-bar">
-            <button class="md2-menu-button" type="button" aria-label="Open navigation" aria-controls="site-drawer" aria-expanded="false">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-              </svg>
-            </button>
+        <body class="site-shell">
+          <header class="site-header">
             <a class="logo" href="/" aria-label="Space home">"Space"</a>
-            <div class="md2-desktop-nav" aria-label="Primary navigation">
-              {{ ← topNav }}
-            </div>
-            <button class="md2-theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false">
-              <svg class="md2-theme-toggle__icon md2-theme-toggle__icon--dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            {{ ← topNav }}
+            <button class="theme-toggle" type="button" aria-label="Switch to dark theme" aria-pressed="false">
+              <svg class="theme-toggle__icon theme-toggle__icon--dark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M9.37 5.51A7 7 0 0 0 18.5 14.63 7 7 0 1 1 9.37 5.51Z"/>
               </svg>
-              <svg class="md2-theme-toggle__icon md2-theme-toggle__icon--light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <svg class="theme-toggle__icon theme-toggle__icon--light" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M12 4V2m0 20v-2m8-8h2M2 12h2m13.66-5.66 1.41-1.41M4.93 19.07l1.41-1.41m0-11.32L4.93 4.93m14.14 14.14-1.41-1.41M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
               </svg>
             </button>
           </header>
-          <aside id="site-drawer" class="md2-drawer" aria-label="Site navigation">
-            {{ ← topNav }}
-          </aside>
-          <button class="md2-drawer-scrim" type="button" aria-label="Close navigation"></button>
-          <div class="md2-app-content">
-            <main class={{mainClass}}>
-              {{ content }}
-              {{ postList }}
-              {{ catList }}
-            </main>
-            <footer>
-               "© 2020-2026 ❤"
-              <a href="https://github.com/berberman">"berberman"</a>
-              <a class="feed-link" href={{atomFeedPath}} aria-label="Atom feed"><img src={{feedIconPath}} alt="" aria-hidden="true"/>"Atom"</a>
-            </footer>
-          </div>
+          <main class={{mainClass}}>
+            {{ content }}
+            {{ postList }}
+            {{ catList }}
+          </main>
+          <footer>
+             "© 2020-2026 ❤"
+            <a href="https://github.com/berberman">"berberman"</a>
+            <a class="feed-link" href={{atomFeedPath}} aria-label="Atom feed"><img src={{feedIconPath}} alt="" aria-hidden="true"/>"Atom"</a>
+          </footer>
           <script src="/static/prism.js"></script>
           <script src="/static/section-sidebar.js"></script>
           <script src="/static/reading-ui.js"></script>

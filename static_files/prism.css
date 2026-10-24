@@ -5,7 +5,7 @@ pre:has(> code[class*="language-"]) {
   color: var(--code-text, #2d3033);
   background: var(--code-surface, #fbfbf8);
   font-family: var(--verso-code-font-family, "SFMono-Regular", Consolas, monospace);
-  font-size: var(--code-block-font-size, 0.92rem);
+  font-size: var(--code-block-font-size, 0.875rem);
   line-height: 1.6;
   text-align: left;
   white-space: pre;
@@ -19,7 +19,7 @@ pre:has(> code[class*="language-"]) {
 pre[class*="language-"],
 pre:has(> code[class*="language-"]) {
   width: 100%;
-  max-width: min(100%, var(--prose-width, 45rem));
+  max-width: min(100%, var(--prose-width, 48rem));
   min-width: 0;
   margin: 1.5rem auto;
   padding: 1.15rem 1rem 1rem;
@@ -54,88 +54,66 @@ code[class*="language-"] ::selection,
 code[class*="language-"]::selection,
 pre[class*="language-"] ::selection,
 pre[class*="language-"]::selection {
+  color: var(--code-text);
   background: var(--page-accent-soft, #e8f0f6);
 }
 
-.token.cdata,
-.token.comment,
-.token.doctype,
-.token.prolog {
-  color: #6f766f;
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.cdata, .token.comment, .token.doctype, .token.prolog):not(.hl.lean *) {
+  color: #626a63;
   font-style: italic;
 }
 
-.token.punctuation,
-.token.operator {
-  color: #6b7280;
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.punctuation, .token.operator):not(.hl.lean *) {
+  color: #626a63;
 }
 
-.token.namespace {
-  opacity: 0.78;
-}
-
-.token.boolean,
-.token.constant,
-.token.deleted,
-.token.number,
-.token.property,
-.token.symbol,
-.token.tag {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.boolean, .token.constant, .token.deleted, .token.number, .token.property, .token.symbol, .token.tag, .token.char):not(.hl.lean *) {
   color: #9a3412;
 }
 
-.token.attr-name,
-.token.builtin,
-.token.char,
-.token.inserted,
-.token.selector,
-.token.string {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.attr-name, .token.builtin, .token.inserted, .token.selector, .token.string):not(.hl.lean *) {
   color: #047857;
 }
 
-.language-css .token.string,
-.style .token.string,
-.token.entity,
-.token.url {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.language-css .token.string, .style .token.string, .token.entity, .token.url):not(.hl.lean *),
+code.language-css:not(.hl.lean) .token.string:not(.hl.lean *) {
   color: #0f766e;
   background: transparent;
 }
 
-.token.atrule,
-.token.attr-value,
-.token.keyword {
-  color: #0f5f9f;
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.atrule, .token.attr-value, .token.keyword):not(.hl.lean *) {
+  color: var(--verso-code-keyword-color);
   font-weight: 650;
 }
 
-.token.class-name,
-.token.function {
-  color: #1d4ed8;
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.class-name, .token.function):not(.hl.lean *) {
+  color: #245a8d;
 }
 
-.token.important,
-.token.regex,
-.token.variable {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.important, .token.regex):not(.hl.lean *) {
   color: #6d3f9f;
 }
 
-.token.bold,
-.token.important {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) .token.variable:not(.hl.lean *) {
+  color: var(--code-text);
+}
+
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.bold, .token.important):not(.hl.lean *) {
   font-weight: 700;
 }
 
-.token.italic {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) .token.italic:not(.hl.lean *) {
   font-style: italic;
 }
 
-.token.entity {
+:where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) .token.entity:not(.hl.lean *) {
   cursor: help;
 }
 
 div.code-toolbar {
   position: relative;
   width: 100%;
-  max-width: min(100%, var(--prose-width, 45rem));
+  max-width: min(100%, var(--prose-width, 48rem));
   min-width: 0;
   margin: 1.5rem auto;
   overflow-x: auto;
@@ -156,6 +134,7 @@ div.code-toolbar > pre[class*="language-"],
 div.code-toolbar > pre:has(> code[class*="language-"]) {
   max-width: 100%;
   margin: 0;
+  padding-top: 2.25rem;
 }
 
 div.code-toolbar > .toolbar > .toolbar-item {
@@ -196,92 +175,40 @@ div.code-toolbar > .toolbar > .toolbar-item > button:focus,
 div.code-toolbar > .toolbar > .toolbar-item > button:hover,
 div.code-toolbar > .toolbar > .toolbar-item > span:focus,
 div.code-toolbar > .toolbar > .toolbar-item > span:hover {
+  background: var(--page-surface-muted);
+  border-color: var(--page-accent-strong);
   color: var(--page-accent-strong, #173f65);
   text-decoration: none;
 }
 
-:root[data-theme="dark"] code[class*="language-"],
-:root[data-theme="dark"] pre[class*="language-"],
-:root[data-theme="dark"] pre:has(> code[class*="language-"]) {
-  color: rgba(255, 255, 255, 0.87);
+div.code-toolbar > .toolbar > .toolbar-item > :is(a, button):focus-visible {
+  outline: 2px solid var(--page-accent);
+  outline-offset: 3px;
 }
 
-:root[data-theme="dark"] code[class*="language-"] ::selection,
-:root[data-theme="dark"] code[class*="language-"]::selection,
-:root[data-theme="dark"] pre[class*="language-"] ::selection,
-:root[data-theme="dark"] pre[class*="language-"]::selection {
-  background: rgba(159, 168, 218, 0.28);
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.cdata, .token.comment, .token.doctype, .token.prolog, .token.punctuation, .token.operator):not(.hl.lean *) {
+  color: #acaaa3;
 }
 
-:root[data-theme="dark"] .token.cdata,
-:root[data-theme="dark"] .token.comment,
-:root[data-theme="dark"] .token.doctype,
-:root[data-theme="dark"] .token.prolog {
-  color: rgba(255, 255, 255, 0.60);
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.boolean, .token.constant, .token.deleted, .token.number, .token.property, .token.symbol, .token.tag, .token.char):not(.hl.lean *) {
+  color: #e6bc78;
 }
 
-:root[data-theme="dark"] .token.punctuation,
-:root[data-theme="dark"] .token.operator {
-  color: rgba(255, 255, 255, 0.70);
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.attr-name, .token.builtin, .token.inserted, .token.selector, .token.string):not(.hl.lean *) {
+  color: #91c9a2;
 }
 
-:root[data-theme="dark"] .token.boolean,
-:root[data-theme="dark"] .token.constant,
-:root[data-theme="dark"] .token.deleted,
-:root[data-theme="dark"] .token.number,
-:root[data-theme="dark"] .token.property,
-:root[data-theme="dark"] .token.symbol,
-:root[data-theme="dark"] .token.tag {
-  color: #ffb74d;
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.language-css .token.string, .style .token.string, .token.entity, .token.url):not(.hl.lean *),
+:root[data-theme="dark"] code.language-css:not(.hl.lean) .token.string:not(.hl.lean *) {
+  color: #91c9c0;
 }
 
-:root[data-theme="dark"] .token.attr-name,
-:root[data-theme="dark"] .token.builtin,
-:root[data-theme="dark"] .token.char,
-:root[data-theme="dark"] .token.inserted,
-:root[data-theme="dark"] .token.selector,
-:root[data-theme="dark"] .token.string {
-  color: #81c784;
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.class-name, .token.function):not(.hl.lean *) {
+  color: #b7d6ef;
 }
 
-:root[data-theme="dark"] .language-css .token.string,
-:root[data-theme="dark"] .style .token.string,
-:root[data-theme="dark"] .token.entity,
-:root[data-theme="dark"] .token.url {
-  color: #80cbc4;
-}
-
-:root[data-theme="dark"] .token.atrule,
-:root[data-theme="dark"] .token.attr-value,
-:root[data-theme="dark"] .token.keyword {
-  color: #9fa8da;
-}
-
-:root[data-theme="dark"] .token.class-name,
-:root[data-theme="dark"] .token.function {
-  color: #90caf9;
-}
-
-:root[data-theme="dark"] .token.important,
-:root[data-theme="dark"] .token.regex,
-:root[data-theme="dark"] .token.variable {
-  color: #ce93d8;
-}
-
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span {
-  background: #424242;
-  color: rgba(255, 255, 255, 0.70);
-}
-
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a:focus,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > a:hover,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button:focus,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > button:hover,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span:focus,
-:root[data-theme="dark"] div.code-toolbar > .toolbar > .toolbar-item > span:hover {
-  color: #ff80ab;
+:root[data-theme="dark"] :where(code[class*="language-"]:not(.hl.lean), pre[class*="language-"]:not(.hl.lean)) :is(.token.important, .token.regex):not(.hl.lean *) {
+  color: #cbb0e2;
 }
 
 @media (max-width: 599px) {

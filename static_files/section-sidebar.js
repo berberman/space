@@ -32,12 +32,15 @@
   }
 
   function updateGiscusTheme(theme) {
+    var giscus = document.querySelector("script[data-theme-light][data-theme-dark]");
+    var themeUrl = giscusThemeUrl(theme);
+    if (giscus && themeUrl) giscus.setAttribute("data-theme", themeUrl);
     document.querySelectorAll(".giscus-frame").forEach(function (frame) {
       postGiscusTheme(theme, frame);
     });
   }
 
-  function observeGiscusTheme(theme) {
+  function observeGiscusTheme() {
     var comments = document.querySelector(".comments");
     if (!comments || !("MutationObserver" in window)) return;
 
@@ -47,7 +50,7 @@
       frame.addEventListener("load", function () {
         postGiscusTheme(document.documentElement.dataset.theme, frame);
       });
-      postGiscusTheme(theme, frame);
+      postGiscusTheme(document.documentElement.dataset.theme, frame);
     }
 
     comments.querySelectorAll(".giscus-frame").forEach(configureFrame);
@@ -57,7 +60,7 @@
   }
 
   function setupThemeController() {
-    var themeButton = document.querySelector(".md2-theme-toggle");
+    var themeButton = document.querySelector(".theme-toggle");
 
     function applyTheme(theme) {
       var dark = theme === "dark";
@@ -72,7 +75,7 @@
     }
 
     applyTheme(preferredTheme());
-    observeGiscusTheme(document.documentElement.dataset.theme);
+    observeGiscusTheme();
 
     if (!themeButton) return;
 
@@ -124,95 +127,6 @@
 
   markCurrentTopNav();
 
-  function setupDrawer() {
-    var menuButton = document.querySelector(".md2-menu-button");
-    var drawer = document.querySelector(".md2-drawer");
-    var scrim = document.querySelector(".md2-drawer-scrim");
-
-    if (!menuButton || !drawer || !scrim || !window.matchMedia) return;
-
-    var desktop = window.matchMedia("(min-width: 1024px)");
-    function setExpanded(open) {
-      menuButton.setAttribute("aria-expanded", String(open));
-    }
-
-    function setButtonLabel(label) {
-      menuButton.setAttribute("aria-label", label);
-    }
-
-    function syncDrawerButton() {
-      setExpanded(isOpen());
-      setButtonLabel(isOpen() ? "Close navigation" : "Open navigation");
-    }
-
-    function isOpen() {
-      return document.body.classList.contains("md2-drawer-open");
-    }
-
-    function closeDrawer(restoreFocus) {
-      if (!isOpen()) return;
-
-      document.body.classList.remove("md2-drawer-open");
-      syncDrawerButton();
-
-      if (restoreFocus && !desktop.matches) {
-        menuButton.focus();
-      }
-    }
-
-    function openDrawer() {
-      if (desktop.matches) return;
-
-      document.body.classList.add("md2-drawer-open");
-      syncDrawerButton();
-
-      var firstLink = drawer.querySelector("a[href]");
-      if (firstLink) {
-        firstLink.focus();
-      }
-    }
-
-    menuButton.addEventListener("click", function () {
-      if (isOpen()) {
-        closeDrawer(true);
-      } else {
-        openDrawer();
-      }
-    });
-
-    scrim.addEventListener("click", function () {
-      closeDrawer(true);
-    });
-
-    drawer.querySelectorAll("a[href]").forEach(function (link) {
-      link.addEventListener("click", function () {
-        closeDrawer(false);
-      });
-    });
-
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") {
-        closeDrawer(true);
-      }
-    });
-
-    function handleBreakpointChange() {
-      if (desktop.matches) {
-        closeDrawer(false);
-      }
-      syncDrawerButton();
-    }
-
-    if (desktop.addEventListener) {
-      desktop.addEventListener("change", handleBreakpointChange);
-    } else {
-      desktop.addListener(handleBreakpointChange);
-    }
-
-    handleBreakpointChange();
-  }
-
-  setupDrawer();
 
   var sidebar = document.querySelector(".section-sidebar");
   if (!sidebar) return;

@@ -1,9 +1,8 @@
-import VersoBlog
-import Blog.Site.Extensions
+import Blog.Prelude
 import Blog.Categories
 import Verso.Code.External
 
-open Verso Genre Blog
+open Blog Prelude
 open Verso.Code.External
 
 set_option verso.exampleProject "Subprojects/NestedInductives"

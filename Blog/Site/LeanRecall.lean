@@ -180,8 +180,8 @@ namespace Verso.Genre.Blog
 @[code_block_expander leanRecall]
 def leanRecall : CodeBlockExpander
   | args, str => do
-    let cfg ← parseThe _root_.Blog.LeanRecall.Config args
-    let block ← _root_.Blog.LeanRecall.expand args cfg str
+    let cfg ← parseThe Blog.LeanRecall.Config args
+    let block ← Blog.LeanRecall.expand args cfg str
     pure #[block]
 
 end Verso.Genre.Blog

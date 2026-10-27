@@ -5,6 +5,7 @@ import Verso.Parser
 
 import Blog.Site.Basic
 import Blog.Site.LeanRecall
+import Blog.Site.InlineLean
 import Blog.Site.Typst
 
 open Verso Genre Blog Doc ArgParse Lean Output Html Elab Parser Template
@@ -109,12 +110,12 @@ end Blog.Afilmory
 namespace Verso.Genre.Blog
 
 @[directive]
-def ogImage : DirectiveExpanderOf _root_.Blog.OgImage.Config
+def ogImage : DirectiveExpanderOf Blog.OgImage.Config
   | cfg, contents => do
     if h : contents.size > 0 then
       logErrorAt contents[0] "Expected no contents"
-    ``(_root_.Blog.OgImage.ogImageMarker
-      (_root_.Blog.OgImage.Config.mk
+    ``(Blog.OgImage.ogImageMarker
+      (Blog.OgImage.Config.mk
         $(quote cfg.url)
         $(quote cfg.alt)
         $(quote cfg.width)
@@ -122,12 +123,12 @@ def ogImage : DirectiveExpanderOf _root_.Blog.OgImage.Config
         $(quote cfg.mimeType)) #[])
 
 @[directive]
-def afilmory : DirectiveExpanderOf _root_.Blog.Afilmory.Config
+def afilmory : DirectiveExpanderOf Blog.Afilmory.Config
   | cfg, contents => do
     if h : contents.size > 0 then
       logErrorAt contents[0] "Expected no contents"
-    ``(_root_.Blog.Afilmory.afilmoryEmbed
-      (_root_.Blog.Afilmory.Config.mk
+    ``(Blog.Afilmory.afilmoryEmbed
+      (Blog.Afilmory.Config.mk
         $(quote cfg.photoId)
         $(quote cfg.width)
         $(quote cfg.height)
@@ -327,11 +328,11 @@ end Blog.Table
 namespace Verso.Genre.Blog
 
 @[code_block]
-def table : CodeBlockExpanderOf _root_.Blog.Table.Config
+def table : CodeBlockExpanderOf Blog.Table.Config
   | cfg, str => do
-    let rows ← _root_.Blog.Table.elabRows str
-    let columns ← _root_.Blog.Table.validateRows str.raw rows
-    _root_.Blog.Table.mkTable cfg columns rows.flatten
+    let rows ← Blog.Table.elabRows str
+    let columns ← Blog.Table.validateRows str.raw rows
+    Blog.Table.mkTable cfg columns rows.flatten
 
 end Verso.Genre.Blog
 
@@ -354,7 +355,7 @@ elab_rules : command
                 @[code_block]
                 def $lang : CodeBlockExpanderOf Unit
                   | (), str => do
-                    `(_root_.Verso.Doc.Block.other (Blog.BlockExt.blob (mkLangCodeBlock $(quote lang.getId.toString) $$str)) #[]))
+                    `(Verso.Doc.Block.other (Blog.BlockExt.blob (mkLangCodeBlock $(quote lang.getId.toString) $$str)) #[]))
     elabCommand cmd
 
 lang_code_block python

@@ -1,8 +1,7 @@
-import VersoBlog
-import Blog.Site.Extensions
+import Blog.Prelude
 import Blog.Categories
 
-open Verso Genre Blog
+open Blog Prelude
 
 #doc (Post) "First Scribble" =>
 

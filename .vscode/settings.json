@@ -1,4 +1,7 @@
 {
   "nixEnvSelector.nixFile": "${workspaceFolder}/shell.nix",
-  "nixEnvSelector.useFlakes": false
+  "nixEnvSelector.useFlakes": false,
+  "files.watcherExclude": {
+    "**/target/**": true
+  }
 }

@@ -1,8 +1,6 @@
-import VersoBlog
-import Blog.Site.Extensions
+import Blog.Prelude
 import Blog.Categories
-
-open Verso Genre Blog
+open Blog Prelude
 
 #doc (Post) "Magical Structure" =>
 
@@ -100,20 +98,20 @@ structure A where
 
 ```leanOutput A
 [Elab.info]
-  • [Command] @ ⟨94, 0⟩-⟨96, 10⟩ @ Lean.Elab.Command.elabDeclaration
-    • [Term] Type : Type 1 @ ⟨94, 0⟩†-⟨96, 10⟩† @ Lean.Elab.Term.elabSort
-    • [Term] A (isBinder := true) : Type @ ⟨94, 10⟩-⟨94, 11⟩
-    • [Term] Nat : Type @ ⟨95, 6⟩-⟨95, 9⟩ @ Lean.Elab.Term.elabIdent
-      • [Completion-Id] Nat : some Sort.{?_uniq.4} @ ⟨95, 6⟩-⟨95, 9⟩
-      • [Term] Nat : Type @ ⟨95, 6⟩-⟨95, 9⟩
-    • [Term] x (isBinder := true) : Nat @ ⟨95, 2⟩-⟨95, 3⟩
-    • [Term] Bool : Type @ ⟨96, 6⟩-⟨96, 10⟩ @ Lean.Elab.Term.elabIdent
-      • [Completion-Id] Bool : some Sort.{?_uniq.6} @ ⟨96, 6⟩-⟨96, 10⟩
-      • [Term] Bool : Type @ ⟨96, 6⟩-⟨96, 10⟩
-    • [Term] y (isBinder := true) : Bool @ ⟨96, 2⟩-⟨96, 3⟩
-    • [Term] A.x (isBinder := true) : A → Nat @ ⟨95, 2⟩-⟨95, 3⟩
-    • [Term] A.y (isBinder := true) : A → Bool @ ⟨96, 2⟩-⟨96, 3⟩
-    • [Term] A (isBinder := true) : Type @ ⟨94, 10⟩-⟨94, 11⟩
+  • [Command] @ ⟨92, 0⟩-⟨94, 10⟩ @ Lean.Elab.Command.elabDeclaration
+    • [Term] Type : Type 1 @ ⟨92, 0⟩†-⟨94, 10⟩† @ Lean.Elab.Term.elabSort
+    • [Term] A (isBinder := true) : Type @ ⟨92, 10⟩-⟨92, 11⟩
+    • [Term] Nat : Type @ ⟨93, 6⟩-⟨93, 9⟩ @ Lean.Elab.Term.elabIdent
+      • [Completion-Id] Nat : some Sort.{?_uniq.4} @ ⟨93, 6⟩-⟨93, 9⟩
+      • [Term] Nat : Type @ ⟨93, 6⟩-⟨93, 9⟩
+    • [Term] x (isBinder := true) : Nat @ ⟨93, 2⟩-⟨93, 3⟩
+    • [Term] Bool : Type @ ⟨94, 6⟩-⟨94, 10⟩ @ Lean.Elab.Term.elabIdent
+      • [Completion-Id] Bool : some Sort.{?_uniq.6} @ ⟨94, 6⟩-⟨94, 10⟩
+      • [Term] Bool : Type @ ⟨94, 6⟩-⟨94, 10⟩
+    • [Term] y (isBinder := true) : Bool @ ⟨94, 2⟩-⟨94, 3⟩
+    • [Term] A.x (isBinder := true) : A → Nat @ ⟨93, 2⟩-⟨93, 3⟩
+    • [Term] A.y (isBinder := true) : A → Bool @ ⟨94, 2⟩-⟨94, 3⟩
+    • [Term] A (isBinder := true) : Type @ ⟨92, 10⟩-⟨92, 11⟩
 ```
 
 # 继承

@@ -1,8 +1,7 @@
 
-import VersoBlog
+import Blog.Prelude
 import Blog.Categories
-import Blog.Site.Extensions
-open Verso Genre Blog
+open Blog Prelude
 
 #doc (Post) "Upload Gradle Build Scripts and Android Libraries to GitHub Packages" =>
 

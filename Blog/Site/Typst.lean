@@ -260,7 +260,7 @@ def typst : RoleExpanderOf Blog.Typst.Config
             </span>
           }}
       `(
-        _root_.Verso.Doc.Inline.other
+        Verso.Doc.Inline.other
           (Blog.InlineExt.blob $(quote html))
           #[]
       )

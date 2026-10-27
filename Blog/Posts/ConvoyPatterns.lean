@@ -1,10 +1,9 @@
-import VersoBlog
+import Blog.Prelude
 import Blog.Categories
-import Blog.Site.Extensions
 
 import Blog.Posts.HEqAndAxiomK
 
-open Verso Genre Blog
+open Blog Prelude
 
 #doc (Post) "Dependent Pattern Matching and Convoy Patterns" =>
 

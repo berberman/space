@@ -45,9 +45,13 @@ target typstRenderer pkg : System.FilePath := do
       cwd := some (pkg.dir / "typst")
     }
 
+input_file typstPreamble where
+  path := "typst/preamble.typ"
+  text := true
+
 @[default_target]
 lean_lib Blog where
-  needs := #[typstRenderer]
+  needs := #[typstRenderer, typstPreamble]
 
 @[default_target]
 lean_exe «generate-blog» where

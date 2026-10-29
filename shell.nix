@@ -10,6 +10,7 @@ pkgs.mkShell {
     clippy
     rust-analyzer
     biome
+    tinymist
     openssl
     pkg-config
   ];

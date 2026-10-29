@@ -1,7 +1,5 @@
 use std::{
-    collections::HashMap,
     io::{self, BufRead, BufReader, BufWriter, Write},
-    ops::Range,
     path::PathBuf,
 };
 
@@ -10,10 +8,11 @@ use serde::{Deserialize, Serialize};
 use typst::{
     Library, LibraryExt, World, WorldExt,
     diag::{FileError, FileResult, SourceDiagnostic},
-    foundations::{Bytes, Datetime, Duration},
+    foundations::{Bytes, Datetime, Duration, Label, Smart},
+    layout::{Frame, FrameItem},
     syntax::{FileId, Source, VirtualRoot},
     text::{Font, FontBook, FontInfo},
-    utils::LazyHash,
+    utils::{LazyHash, PicoStr},
 };
 
 use typst_kit::{
@@ -22,17 +21,17 @@ use typst_kit::{
     packages::SystemPackages,
 };
 
-use typst_layout::PagedDocument;
+use typst_layout::{Page, PagedDocument};
 use typst_svg::SvgOptions;
 
 #[derive(Debug, Deserialize)]
 struct Request {
     id: u64,
     source: String,
-    display: bool,
+    fragments: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Serialize)]
 struct Diagnostic {
     /// "error" or "warning".
     kind: String,
@@ -40,10 +39,9 @@ struct Diagnostic {
     message: String,
 
     /// Byte offsets into Request.source.
-    ///
-    /// These are intentionally not offsets into our synthetic Typst document.
     start: Option<usize>,
     stop: Option<usize>,
+    fragment: Option<u64>,
 
     hints: Vec<String>,
 }
@@ -55,21 +53,17 @@ impl Diagnostic {
             message: message.into(),
             start: None,
             stop: None,
+            fragment: None,
             hints: Vec::new(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-struct CompiledFragment {
-    svg: Option<String>,
-    diagnostics: Vec<Diagnostic>,
-}
-
 #[derive(Debug, Serialize)]
 struct Response {
     id: u64,
-    svg: Option<String>,
+    success: bool,
+    outputs: Vec<String>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -77,40 +71,14 @@ impl Response {
     fn internal_error(id: u64, message: impl Into<String>) -> Self {
         Self {
             id,
-            svg: None,
+            success: false,
+            outputs: Vec::new(),
             diagnostics: vec![Diagnostic::error(message)],
         }
     }
-
-    fn from_compiled(id: u64, compiled: &CompiledFragment) -> Self {
-        Self {
-            id,
-            svg: compiled.svg.clone(),
-            diagnostics: compiled.diagnostics.clone(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct CacheKey {
-    source: String,
-    display: bool,
 }
 
 const TEXT_SIZE_PT: f64 = 11.0;
-const PAGE_PREAMBLE: &str = r#"
-#import "@preview/commute:0.3.0": *
-#import "@preview/curryst:0.6.0": *
-
-#set text(size: 11pt)
-
-#set page(
-  width: auto,
-  height: auto,
-  margin: 0pt,
-  fill: none,
-)
-"#;
 struct PackageFiles {
     packages: SystemPackages,
 }
@@ -135,7 +103,7 @@ impl FileLoader for PackageFiles {
 
             VirtualRoot::Project => {
                 // The only project source we support is the synthetic
-                // `self.source`, which MathWorld handles before reaching here.
+                // `self.source`, which FragmentWorld handles before reaching here.
                 Err(FileError::NotFound(PathBuf::from(
                     id.vpath().get_without_slash(),
                 )))
@@ -144,14 +112,14 @@ impl FileLoader for PackageFiles {
     }
 }
 
-struct MathWorld {
+struct FragmentWorld {
     library: LazyHash<Library>,
     book: LazyHash<FontBook>,
     fonts: Vec<Font>,
     source: Source,
     package_files: FileStore<PackageFiles>,
 }
-impl MathWorld {
+impl FragmentWorld {
     fn new() -> Self {
         let source = Source::detached(String::new());
 
@@ -171,27 +139,12 @@ impl MathWorld {
         }
     }
 
-    fn set_formula(&mut self, source: &str, display: bool) -> usize {
-        let (open, close) = if display { ("$ ", " $") } else { ("$", "$") };
-
-        let mut wrapped =
-            String::with_capacity(PAGE_PREAMBLE.len() + open.len() + source.len() + close.len());
-
-        wrapped.push_str(PAGE_PREAMBLE);
-        wrapped.push_str(open);
-
-        let source_start = wrapped.len();
-
-        wrapped.push_str(source);
-        wrapped.push_str(close);
-
-        self.source.replace(&wrapped);
-
-        source_start
+    fn set_source(&mut self, source: &str) {
+        self.source.replace(source);
     }
 }
 
-impl World for MathWorld {
+impl World for FragmentWorld {
     fn library(&self) -> &LazyHash<Library> {
         &self.library
     }
@@ -229,49 +182,19 @@ impl World for MathWorld {
     }
 }
 
-fn translate_range(
-    range: Range<usize>,
-    source_start: usize,
-    source_len: usize,
-) -> Option<(usize, usize)> {
-    let source_stop = source_start + source_len;
-
-    if range.start == range.end {
-        if range.start >= source_start && range.start <= source_stop {
-            let pos = range.start - source_start;
-            return Some((pos, pos));
-        }
-
-        return None;
-    }
-
-    if range.end <= source_start || range.start >= source_stop {
-        return None;
-    }
-
-    let start = range.start.max(source_start) - source_start;
-    let stop = range.end.min(source_stop) - source_start;
-
-    Some((start, stop))
-}
-
 fn convert_diagnostic(
-    world: &MathWorld,
+    world: &FragmentWorld,
     diagnostic: &SourceDiagnostic,
     kind: &str,
-    source_start: usize,
-    source_len: usize,
 ) -> Diagnostic {
     let range = if diagnostic.span.id() == Some(world.main()) {
-        world
-            .range(diagnostic.span)
-            .and_then(|range| translate_range(range, source_start, source_len))
+        world.range(diagnostic.span)
     } else {
         None
     };
 
     let (start, stop) = match range {
-        Some((start, stop)) => (Some(start), Some(stop)),
+        Some(range) => (Some(range.start), Some(range.end)),
 
         None => (None, None),
     };
@@ -281,6 +204,7 @@ fn convert_diagnostic(
         message: diagnostic.message.to_string(),
         start,
         stop,
+        fragment: None,
 
         hints: diagnostic
             .hints
@@ -290,62 +214,132 @@ fn convert_diagnostic(
     }
 }
 
-impl MathWorld {
-    fn compile_fragment(&mut self, source: &str, display: bool) -> CompiledFragment {
-        let source_start = self.set_formula(source, display);
-
+impl FragmentWorld {
+    fn compile_document(&mut self, request: Request) -> Response {
+        let Request {
+            id,
+            source,
+            fragments,
+        } = request;
+        self.set_source(&source);
         let warned = typst::compile::<PagedDocument>(&*self);
-
-        // Warnings coexist with successful output.
         let mut diagnostics: Vec<Diagnostic> = warned
             .warnings
             .iter()
-            .map(|diagnostic| {
-                convert_diagnostic(self, diagnostic, "warning", source_start, source.len())
-            })
+            .map(|diagnostic| convert_diagnostic(self, diagnostic, "warning"))
             .collect();
 
         let document = match warned.output {
             Ok(document) => document,
-
             Err(errors) => {
-                diagnostics.extend(errors.iter().map(|diagnostic| {
-                    convert_diagnostic(self, diagnostic, "error", source_start, source.len())
-                }));
-
-                return CompiledFragment {
-                    svg: None,
+                diagnostics.extend(
+                    errors
+                        .iter()
+                        .map(|diagnostic| convert_diagnostic(self, diagnostic, "error")),
+                );
+                return Response {
+                    id,
+                    success: false,
+                    outputs: Vec::new(),
                     diagnostics,
                 };
             }
         };
 
-        let pages = document.pages();
+        let mut pages = Vec::with_capacity(fragments as usize);
+        for fragment in 0..fragments {
+            match fragment_page(&document, fragment) {
+                Ok(page) => pages.push(page),
+                Err(message) => {
+                    let mut diagnostic = Diagnostic::error(message);
+                    diagnostic.fragment = Some(fragment);
+                    diagnostics.push(diagnostic);
+                }
+            }
+        }
 
-        if pages.len() != 1 {
-            diagnostics.push(Diagnostic::error(format!(
-                "expected Typst to produce exactly one page, got {}",
-                pages.len(),
-            )));
-
-            return CompiledFragment {
-                svg: None,
+        if diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == "error")
+        {
+            return Response {
+                id,
+                success: false,
+                outputs: Vec::new(),
                 diagnostics,
             };
         }
 
-        let page = &pages[0];
-        let svg = typst_svg::svg(page, &SvgOptions::default());
-        let svg = make_svg_embeddable(svg, page);
+        let outputs = pages
+            .into_iter()
+            .map(|page| {
+                let has_background = matches!(&page.fill, Smart::Auto | Smart::Custom(Some(_)));
+                if has_background || frame_has_visible_output(&page.frame) {
+                    make_svg_embeddable(typst_svg::svg(page, &SvgOptions::default()), page)
+                } else {
+                    String::new()
+                }
+            })
+            .collect();
 
-        CompiledFragment {
-            svg: Some(svg),
+        Response {
+            id,
+            success: true,
+            outputs,
             diagnostics,
         }
     }
 }
 
-fn make_svg_embeddable(svg: String, page: &typst_layout::Page) -> String {
+fn fragment_page(document: &PagedDocument, fragment: u64) -> Result<&Page, String> {
+    let introspector = document.introspector();
+    let marker_page = |boundary: &str| -> Result<usize, String> {
+        let name = format!("__space-typst-{boundary}-{fragment}");
+        let marker = introspector
+            .elements()
+            .query_label(
+                Label::new(PicoStr::intern(&name)).expect("fragment marker label is nonempty"),
+            )
+            .map_err(|error| {
+                format!("cannot find unique {boundary} marker for fragment {fragment}: {error}")
+            })?;
+        let location = marker
+            .location()
+            .ok_or_else(|| format!("{boundary} marker for fragment {fragment} has no location"))?;
+        let position = introspector.position(location).ok_or_else(|| {
+            format!("{boundary} marker for fragment {fragment} has no page position")
+        })?;
+        Ok(position.page.get() - 1)
+    };
+    let start = marker_page("start")?;
+    let end = marker_page("end")?;
+    if end < start {
+        return Err(format!(
+            "end marker precedes start marker for fragment {fragment}"
+        ));
+    }
+    if start != end {
+        return Err(format!(
+            "expected Typst to produce exactly one page for fragment {fragment}, got {}",
+            end - start + 1,
+        ));
+    }
+    document
+        .pages()
+        .get(start)
+        .ok_or_else(|| format!("fragment {fragment} markers point outside the document pages"))
+}
+
+fn frame_has_visible_output(frame: &Frame) -> bool {
+    frame.items().any(|(_, item)| match item {
+        FrameItem::Group(group) => frame_has_visible_output(&group.frame),
+        FrameItem::Tag(_) | FrameItem::Link(..) => false,
+        FrameItem::Text(text) => !text.glyphs.is_empty(),
+        FrameItem::Shape(..) | FrameItem::Image(..) => true,
+    })
+}
+
+fn make_svg_embeddable(svg: String, page: &Page) -> String {
     let width_em = page.frame.width().to_pt() / TEXT_SIZE_PT;
 
     let height_em = page.frame.height().to_pt() / TEXT_SIZE_PT;
@@ -367,50 +361,6 @@ fn make_svg_embeddable(svg: String, page: &typst_layout::Page) -> String {
     svg
 }
 
-struct Server {
-    world: MathWorld,
-    cache: HashMap<CacheKey, CompiledFragment>,
-}
-
-impl Server {
-    fn new() -> Self {
-        Self {
-            world: MathWorld::new(),
-            cache: HashMap::new(),
-        }
-    }
-
-    fn handle(&mut self, request: Request) -> Response {
-        let Request {
-            id,
-            source,
-            display,
-        } = request;
-
-        let key = CacheKey {
-            source: source.clone(),
-            display,
-        };
-
-        if let Some(cached) = self.cache.get(&key) {
-            return Response::from_compiled(id, cached);
-        }
-
-        let compiled = self.world.compile_fragment(&source, display);
-
-        // Since this is a long-running process we don't want old memoized
-        // generations to accumulate forever
-        typst::comemo::evict(30);
-
-        let response = Response::from_compiled(id, &compiled);
-
-        // Cache both successful SVGs and deterministic diagnostics.
-        self.cache.insert(key, compiled);
-
-        response
-    }
-}
-
 fn write_response(writer: &mut impl Write, response: &Response) -> io::Result<()> {
     // stdout is the protocol!!
     serde_json::to_writer(&mut *writer, response).map_err(io::Error::other)?;
@@ -430,7 +380,7 @@ fn main() -> io::Result<()> {
 
     let mut writer = BufWriter::new(stdout.lock());
 
-    let mut server = Server::new();
+    let mut world = FragmentWorld::new();
 
     for line in reader.lines() {
         let line = line?;
@@ -440,7 +390,11 @@ fn main() -> io::Result<()> {
         }
 
         let response = match serde_json::from_str::<Request>(&line) {
-            Ok(request) => server.handle(request),
+            Ok(request) => {
+                let response = world.compile_document(request);
+                typst::comemo::evict(30);
+                response
+            }
 
             Err(error) => Response::internal_error(0, format!("invalid request JSON: {error}")),
         };

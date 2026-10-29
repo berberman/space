@@ -2,265 +2,90 @@ import VersoBlog
 import Verso.Doc.ArgParse
 import Verso.Doc.Elab
 import Verso.Parser
-import Lean.Data.Json
-import Std.Sync.Mutex
+import Blog.Site.Typst.Config
+import Blog.Site.Typst.Ide
+import Blog.Site.Typst.Renderer
+import Blog.Site.Typst.Runtime
+import Blog.Site.Typst.Registry
+
+/-! Verso Typst roles and fenced blocks, rendered together at the end of each Lean file. -/
 
 open Lean
-
 open Verso Genre Blog Doc Elab ArgParse Output Html
 
 namespace Blog.Typst
 
-structure Request where
-  id : Nat
-  source : String
-  display : Bool
-deriving ToJson
 
-structure Diagnostic where
-  kind : String
-  message : String
-  /--
-  Byte offsets into `Request.source`.
-  -/
-  start : Option Nat
-  stop : Option Nat
-  hints : Array String
-deriving FromJson, Repr, Inhabited
+/-- Chooses the Lean source span for a compiler or page-boundary diagnostic. -/
+def Diagnostic.ref (diag : Diagnostic) (document : Ide.Document) (fallback : Syntax) : Syntax :=
+  let exact? := do
+    let start ← diag.start
+    let stop ← diag.stop
+    document.ref? start stop
+  let boundary? := do
+    let id ← diag.fragment
+    let segment ← (document.segmentsById[id]?).join
+    return Syntax.ofRange { start := segment.fragment.start, stop := segment.fragment.stop }
+  (exact? <|> boundary?).getD fallback
 
-def Diagnostic.ref (diag : Diagnostic) (sourceStx : Syntax) : Syntax :=
-  match diag.start, diag.stop,
-        sourceStx.getPos?, sourceStx.getTailPos? with
-  | some start, some stop, some sourceStart, some sourceStop =>
-      let startPos := sourceStart.increaseBy start
-      let stopPos := sourceStart.increaseBy stop
-      if startPos.byteIdx ≤ stopPos.byteIdx &&
-         stopPos.byteIdx ≤ sourceStop.byteIdx then
-        Syntax.ofRange {
-          start := startPos
-          stop := stopPos
-        }
-      else sourceStx
-  | _, _, _, _ => sourceStx
-
-structure Response where
-  id : Nat
-  svg : Option String
-  diagnostics : Array Diagnostic
-deriving FromJson, Repr
-
-def Diagnostic.isError (diag : Diagnostic) : Bool :=
-  diag.kind == "error"
-
-def Diagnostic.isWarning (diag : Diagnostic) : Bool :=
-  diag.kind == "warning"
-
-def Diagnostic.format (diag : Diagnostic) : String :=
-  if diag.hints.isEmpty then
-    s!"Typst: {diag.message}"
-  else
-    let hints :=
-      diag.hints.toList.map fun hint =>
-        s!"  hint: {hint}"
-
-    s!"Typst: {diag.message}\n{String.intercalate "\n" hints}"
-
-private structure Process where
-  child : IO.Process.Child {
-    stdin := .piped
-    stdout := .piped
-    stderr := .inherit
-  }
-  nextId : Nat := 1
-
-private def startProcess : IO Process := do
-
-  -- stdout is only for NDJSON
-  let child ← IO.Process.spawn {
-    cmd := "typst/target/release/space-typst"
-    args := #[]
-    stdin := .piped
-    stdout := .piped
-    stderr := .inherit
-  }
-
-  pure {
-    child
-    nextId := 1
-  }
-
-
-private def Process.killQuietly (process : Process) : IO Unit := do
-  try
-    process.child.kill
-  catch _ =>
-    pure ()
-
-
-private def Process.call (process : Process) (source : String) (display : Bool) : IO (Response × Process) := do
-
-  if let some exitCode ← process.child.tryWait then
-    throw <| IO.userError s!"space-typst has already exited with status {exitCode}"
-
-  let id := process.nextId
-
-  let request : Request := {
-    id
-    source
-    display
-  }
-
-  -- Make it one-line
-  let requestJson := toJson request |>.compress
-
-  process.child.stdin.putStrLn requestJson
-  process.child.stdin.flush
-
-  -- This blocks until exactly one response is available
-  let line ← process.child.stdout.getLine
-
-  if line.isEmpty then
-    let status ← process.child.tryWait
-
-    throw <| IO.userError <|
-      match status with
-      | some exitCode => s!"space-typst terminated with status {exitCode}"
-      | none => "space-typst closed stdout unexpectedly"
-
-  let payload := line.trimAscii.toString
-
-  if payload.isEmpty then
-    throw <| IO.userError "space-typst returned an empty response"
-
-  let json ←
-    match Json.parse payload with
-    | .ok json => pure json
-    | .error error => throw <| IO.userError s!"
-space-typst returned invalid JSON:
-{error}
-
-response:
-{payload}"
-
-  let response : Response ←
-    match FromJson.fromJson? (α := Response) json with
-    | .ok response => pure response
-    | .error error => throw <| IO.userError s!"
-space-typst returned an invalid response:
-{error}
-
-response:
-{payload}"
-
-  if response.id != id then
-    throw <| IO.userError s!"
-space-typst RPC desynchronized:
-expected response id {id}, got {response.id}"
-
-  pure (
-    response,
-    {
-      process with
-      nextId := id + 1
-    }
-  )
-
-
-/--
-Mutex for one process per Lean process
--/
-initialize processState : Std.Mutex (Option Process) ← Std.Mutex.new none
-
-def run (source : String) (display : Bool) : IO Response :=
-  processState.atomically do
-    let process ←
-      match ← get with
-      | some process => pure process
-      | none =>  startProcess
-
-    try
-      let (response, process') ← process.call source display
-      set (some process')
-      pure response
+open Lean.Elab.Command in
+/-- Compiles the file's registered fragments and embeds their SVG table at EOF. -/
+@[command_elab Lean.Parser.Command.eoi]
+def finalizeTypst : CommandElab := fun stx => do
+  let env ← getEnv
+  let entries := sourceEntries env
+  if entries.isEmpty then return
+  let document := Ide.Document.create entries
+  let fallback := (document.segments[0]?.map fun segment =>
+    Syntax.ofRange { start := segment.fragment.start, stop := segment.fragment.stop }).getD stx
+  let response ← try
+      run document.source entries.size
     catch error =>
-      set (none : Option Process)
-      process.killQuietly
-      throw error
-
-def restart : IO Unit :=
-  processState.atomically do
-    if let some process ← get then process.killQuietly
-    set (none : Option Process)
-
-structure Config where
-  display : Bool
-
-section
-
-variable [Monad m] [MonadError m]
-
-def Config.parse : ArgParse m Config :=
-  Config.mk <$> .flag `display false
-
-instance : FromArgs Config m :=
-  ⟨Config.parse⟩
-
-end
+      throwErrorAt fallback error.toMessageData
+  liftCoreM Core.checkInterrupted
+  let mut hasErrors := false
+  for diagnostic in response.diagnostics do
+    let ref := diagnostic.ref document fallback
+    if diagnostic.kind == "warning" then
+      logWarningAt ref diagnostic.format
+    else if diagnostic.kind == "error" then
+      hasErrors := true
+      logErrorAt ref diagnostic.format
+  if hasErrors then return
+  unless response.success do
+    throwErrorAt fallback "Typst batch compilation failed without an error diagnostic"
+  let file := fileKey env (← getFileName)
+  install file response.outputs
+  let outputs : Array (TSyntax `term) := response.outputs.map quote
+  elabCommand (← `(initialize do
+    Blog.Typst.install $(quote file) #[$outputs,*]))
 
 end Blog.Typst
 
 open Lean.Doc.Syntax
 
+/-- Embeds a Typst code span, using inline math by default. -/
 @[role]
 def typst : RoleExpanderOf Blog.Typst.Config
   | config, contents => do
-      let inl ←
-        match contents with
+      let inl ← match contents with
         | #[inl] => pure inl
         | _ => throwError "Expected precisely one Typst code span, got {contents}"
-      let (srcStx, source) ←
-        match inl with
-        | `(inline| code( $s:str )) => pure (s.raw , s.getString)
+      let str ← match inl with
+        | `(inline| code( $s:str )) => pure s
         | _ => throwErrorAt inl "Expected a code span containing Typst source"
-      let response ←
-        try
-          Blog.Typst.run source config.display
-        catch error =>
-          throwErrorAt inl error.toMessageData
+      let payload ← Blog.Typst.registerFragment config str
+      ``(Verso.Doc.Inline.other
+        (Blog.InlineExt.component $(quote ``Blog.Typst.renderedTypst)
+          (toJson (Blog.Typst.Payload.mk $(quote payload.file) $(quote payload.id) $(quote payload.display))))
+        #[])
 
-      for diagnostic in response.diagnostics do
-        if diagnostic.isWarning then
-          logWarningAt (diagnostic.ref srcStx) diagnostic.format
-
-      let errors := response.diagnostics.filter (·.isError)
-
-      if h : errors.size > 0 then
-        for diagnostic in errors[0 : errors.size - 1] do
-          logErrorAt (diagnostic.ref srcStx) diagnostic.format
-
-        let diagnostic := errors[errors.size - 1]
-        throwErrorAt (diagnostic.ref srcStx) diagnostic.format
-
-      let svg ←
-        match response.svg with
-        | some svg => pure svg
-        | none =>  throwErrorAt inl "Typst compilation produced neither SVG nor an error"
-
-      let html : Html :=
-        if config.display then
-          {{
-            <span class="typst-block">
-              {{ Html.text false svg }}
-            </span>
-          }}
-        else
-          {{
-            <span class="typst-inline">
-              {{ Html.text false svg }}
-            </span>
-          }}
-      `(
-        Verso.Doc.Inline.other
-          (Blog.InlineExt.blob $(quote html))
-          #[]
-      )
+/-- Embeds a rendered Typst block, using block-level markup by default. -/
+@[code_block typst]
+def typstBlock : CodeBlockExpanderOf Blog.Typst.BlockConfig
+  | config, str => do
+      let payload ← Blog.Typst.registerFragment config.toConfig str
+      ``(Verso.Doc.Block.other
+        (Blog.BlockExt.component $(quote ``Blog.Typst.renderedTypst)
+          (toJson (Blog.Typst.Payload.mk $(quote payload.file) $(quote payload.id) $(quote payload.display))))
+        #[])
